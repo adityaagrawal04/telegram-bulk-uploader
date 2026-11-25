@@ -1,0 +1,17 @@
+# Credentials & Telegram Session Files
+.env
+*.session
+*.session-journal
+
+# Local State & Logs
+uploaded_state.json
+skipped_large_files.txt
+
+# Python Cache & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.DS_Store
+Thumbs.db
