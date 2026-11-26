@@ -1,7 +1,8 @@
 # ⚡ Telegram Bulk Uploader
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <a href="https://github.com/adityaagrawal04/telegram-bulk-uploader/actions/workflows/ci.yml"><img src="https://github.com/adityaagrawal04/telegram-bulk-uploader/actions/workflows/ci.yml/badge.svg" alt="CI Status" /></a>
+  <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/Telethon-1.36+-0088cc?style=for-the-badge&logo=telegram&logoColor=white" />
   <img src="https://img.shields.io/badge/FastAPI-Dashboard-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/Turbo_Engine-16x_Parallel-FF6B6B?style=for-the-badge&logo=speedtest&logoColor=white" />
