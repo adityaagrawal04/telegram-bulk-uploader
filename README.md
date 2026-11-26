@@ -192,6 +192,10 @@ Is it safe to use? **Yes, 100%.** Telegram Bulk Uploader is built with strict co
 * 🏠 **Session Key Reuse:** Connections to your primary Data Center reuse your authenticated session `AuthKey` directly, avoiding suspicious repetitive auth exports.
 * 📁 **Zero Third-Party Relays:** All data streams point-to-point directly from your machine to official Telegram Data Centers. No intermediate proxies, tokens, or servers ever touch your files.
 
+> [!TIP]
+> **Use "Saved Messages" (`me`) for personal vaults.**
+> Uploading to **Saved Messages (`me`)** is private self-chat. Because no other users see or interact with the messages, it cannot be reported for spam, and Telegram's anti-abuse algorithms treat it as legitimate personal cloud backup. If using a channel, always keep it **Private** (never Public).
+
 ---
 
 ## FAQ
