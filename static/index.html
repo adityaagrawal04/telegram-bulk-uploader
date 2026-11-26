@@ -655,6 +655,7 @@
         <label><input type="checkbox" id="splitLarge" checked /> ⚡ Losslessly split &gt;2GB/4GB videos with FFmpeg</label>
         <label><input type="checkbox" id="premiumMode" /> ⭐ Telegram Premium (4GB max)</label>
         <label><input type="checkbox" id="compressMedia" /> 🗜️ Media compression</label>
+        <label><input type="checkbox" id="deleteOnSuccess" /> 🗑️ Delete local file on success</label>
       </div>
 
       <div class="actions-bar">
@@ -887,6 +888,7 @@
           compress:document.getElementById("compressMedia").checked,
           premium:document.getElementById("premiumMode").checked,
           split_large:document.getElementById("splitLarge").checked,
+          delete_on_success:document.getElementById("deleteOnSuccess")?.checked || false,
           delay:parseFloat(document.getElementById("delayInput").value)||1.5
         });
       }catch(e){m.textContent=e.message;}

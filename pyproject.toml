@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "telegram-bulk-uploader"
+version = "1.2.0"
+authors = [
+  { name="Aditya Sanjay Agrawal", email="966524b@gmail.com" },
+]
+description = "Ultra-fast, fault-tolerant bulk uploader for Telegram with a modern Arc & Okala Glass UI, 16x parallel multipart engine, and lossless FFmpeg auto-splitting."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+keywords = [
+  "telegram", "uploader", "bulk-upload", "telethon", "fastapi", "backup",
+  "archiver", "cloud-storage", "ffmpeg", "video-splitter", "cli",
+  "telegram-uploader", "telegram-cloud", "fast-telethon"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Communications :: Chat",
+    "Topic :: System :: Archiving :: Backup",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "telethon>=1.36.0",
+    "cryptg>=0.4.0",
+    "tqdm>=4.66.0",
+    "python-dotenv>=1.0.1",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/adityaagrawal04/telegram-bulk-uploader"
+"Bug Tracker" = "https://github.com/adityaagrawal04/telegram-bulk-uploader/issues"
+
+[project.scripts]
+telegram-bulk-uploader = "uploader:main"
+telegram-bulk-ui = "app:main"

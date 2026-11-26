@@ -85,6 +85,7 @@ class UploadStartRequest(BaseModel):
     compress: bool = False
     premium: bool = False
     split_large: bool = False
+    delete_on_success: bool = False
     delay: float = 1.5
 
 
@@ -479,6 +480,12 @@ async def _run_background_upload(req: UploadStartRequest):
             await _send_with_progress(
                 client, target, file_path, caption, force_document, req.delay, rel_path
             )
+            if req.delete_on_success:
+                try:
+                    os.remove(file_path)
+                    state.log(f"[DELETED LOCAL] {rel_path}")
+                except Exception as del_err:
+                    state.log(f"[WARN] Failed to delete {rel_path}: {del_err}")
             uploaded_files.add(rel_path)
             uploader.save_state(uploaded_files)
             state.completed_files += 1

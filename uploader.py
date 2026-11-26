@@ -92,6 +92,16 @@ def parse_args():
         action="store_true",
         help="Interactively choose which folders and files to upload before starting",
     )
+    parser.add_argument(
+        "--delete-on-success",
+        action="store_true",
+        help="Delete local file after it has been successfully uploaded to Telegram",
+    )
+    parser.add_argument(
+        "--no-thumb",
+        action="store_true",
+        help="Disable automatic thumbnail generation for uploaded video files",
+    )
     return parser.parse_args()
 
 
@@ -354,11 +364,50 @@ def split_video_file(file_path, output_dir, max_file_size):
     return chunks
 
 
+def generate_video_thumbnail(video_path, out_thumb_path):
+    """Generate a crisp video thumbnail at 1s timestamp using FFmpeg."""
+    if not shutil.which("ffmpeg"):
+        return None
+    try:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-ss",
+                "00:00:01",
+                "-i",
+                video_path,
+                "-vframes",
+                "1",
+                "-q:v",
+                "2",
+                out_thumb_path,
+            ],
+            capture_output=True,
+            check=True,
+            timeout=10,
+        )
+        if os.path.exists(out_thumb_path) and os.path.getsize(out_thumb_path) > 0:
+            return out_thumb_path
+    except Exception:
+        pass
+    return None
+
+
 async def upload_file_with_retry(
-    client, target, file_path, caption, force_document, delay, desc_label, rel_path
+    client, target, file_path, caption, force_document, delay, desc_label, rel_path, delete_on_success=False, no_thumb=False
 ):
-    """Upload a single file with fast parallel chunks, tqdm progress bar, and FloodWait/error retries."""
+    """Upload a single file with fast parallel chunks, optional thumbnail, tqdm progress bar, and FloodWait/error retries."""
     file_size = os.path.getsize(file_path)
+    _, ext = os.path.splitext(file_path)
+    thumb_path = None
+    temp_thumb = None
+
+    if not no_thumb and ext.lower() in VIDEO_EXTENSIONS and shutil.which("ffmpeg"):
+        temp_thumb = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+        temp_thumb.close()
+        thumb_path = generate_video_thumbnail(file_path, temp_thumb.name)
+
     while True:
         try:
             with tqdm(
@@ -372,7 +421,7 @@ async def upload_file_with_retry(
                     pbar.n = current
                     pbar.refresh()
 
-                # Fast parallel multipart upload
+                # Fast parallel multipart upload (16 workers)
                 uploaded_input = await fast_upload_file(
                     client,
                     file_path,
@@ -385,7 +434,20 @@ async def upload_file_with_retry(
                     uploaded_input,
                     caption=caption,
                     force_document=force_document,
+                    thumb=thumb_path if thumb_path and os.path.exists(thumb_path) else None,
                 )
+
+            if delete_on_success:
+                try:
+                    os.remove(file_path)
+                except Exception as del_err:
+                    print(f"\n[WARN] Failed to delete {file_path} after upload: {del_err}")
+
+            if temp_thumb and os.path.exists(temp_thumb.name):
+                try:
+                    os.remove(temp_thumb.name)
+                except Exception:
+                    pass
 
             await asyncio.sleep(delay)
             return
@@ -504,7 +566,15 @@ async def main():
                         args.delay,
                         desc_label,
                         f"{rel_path} [part {part_idx}/{total_parts}]",
+                        delete_on_success=False,
+                        no_thumb=args.no_thumb,
                     )
+
+            if args.delete_on_success:
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
 
             uploaded_files.add(rel_path)
             save_state(uploaded_files)
@@ -521,6 +591,8 @@ async def main():
             args.delay,
             desc_label,
             rel_path,
+            delete_on_success=args.delete_on_success,
+            no_thumb=args.no_thumb,
         )
 
         uploaded_files.add(rel_path)
