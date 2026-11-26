@@ -1,7 +1,10 @@
 import os
+import sys
 import shutil
 import asyncio
 import tempfile
+import threading
+import webbrowser
 from collections import deque
 from typing import List, Optional
 
@@ -470,5 +473,8 @@ async def upload_status():
 
 
 if __name__ == "__main__":
-    print("Starting Telegram Bulk Uploader Web UI at http://127.0.0.1:8000")
+    url = "http://127.0.0.1:8000"
+    print(f"Starting Telegram Bulk Uploader Web UI at {url}")
+    if "--no-browser" not in sys.argv:
+        threading.Timer(1.2, lambda: webbrowser.open(url)).start()
     uvicorn.run(app, host="127.0.0.1", port=8000)

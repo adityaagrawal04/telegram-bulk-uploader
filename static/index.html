@@ -3,80 +3,361 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Telegram Bulk Uploader</title>
+  <title>Telegram Bulk Uploader ✨</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --border: #334155;
-      --text: #f1f5f9;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
-      --accent-hover: #0ea5e9;
-      --success: #22c55e;
-      --danger: #ef4444;
-      --warn: #f59e0b;
+      --bg-base: #09090b;
+      --glass: rgba(24, 24, 34, 0.68);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --pink: #ff4ecd;
+      --purple: #8b5cf6;
+      --cyan: #22d3ee;
+      --mint: #34d399;
+      --amber: #fbbf24;
+      --danger: #fb7185;
     }
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); padding: 24px; }
-    .container { max-width: 1050px; margin: 0 auto; display: grid; gap: 20px; }
-    header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-    header h1 { margin: 0; font-size: 1.5rem; }
-    .badge { padding: 6px 12px; border-radius: 999px; font-size: 0.85rem; background: #0f172a; border: 1px solid var(--border); }
-    .badge.ok { border-color: var(--success); color: var(--success); }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-    .card h2 { margin: 0 0 14px; font-size: 1.15rem; color: var(--accent); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg-base);
+      color: var(--text);
+      padding: 28px 18px 48px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Vibrant Aurora / Mesh Gradient Background */
+    .aurora {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(95px);
+      opacity: 0.42;
+      animation: float 14s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 460px; height: 460px; background: var(--pink); top: -120px; left: -100px; }
+    .blob-2 { width: 520px; height: 520px; background: var(--purple); top: 20%; right: -140px; animation-delay: -4s; }
+    .blob-3 { width: 420px; height: 420px; background: var(--cyan); bottom: -120px; left: 22%; animation-delay: -8s; }
+    .blob-4 { width: 300px; height: 300px; background: var(--mint); bottom: 10%; right: 18%; opacity: 0.25; animation-delay: -11s; }
+
+    @keyframes float {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(35px, -25px) scale(1.08); }
+    }
+
+    .container {
+      max-width: 1060px;
+      margin: 0 auto;
+      display: grid;
+      gap: 22px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding: 6px 4px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-pill {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-size: 1.35rem;
+      background: linear-gradient(135deg, var(--pink), var(--purple), var(--cyan));
+      box-shadow: 0 0 24px rgba(255, 78, 205, 0.45);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.65rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #fff 0%, #f0abfc 50%, #67e8f9 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      margin: 2px 0 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .badge {
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: rgba(15, 15, 22, 0.75);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(10px);
+    }
+    .badge.ok {
+      border-color: rgba(52, 211, 153, 0.55);
+      color: var(--mint);
+      box-shadow: 0 0 18px rgba(52, 211, 153, 0.2);
+    }
+
+    .card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 22px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .step-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(255, 78, 205, 0.22), rgba(139, 92, 246, 0.22));
+      border: 1px solid rgba(255, 78, 205, 0.35);
+      color: #f5d0fe;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #d4d4d8;
+      margin-bottom: 5px;
+    }
     input, select {
-      width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border);
-      background: #0f172a; color: var(--text); font-size: 0.95rem;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(9, 9, 14, 0.72);
+      color: var(--text);
+      font-size: 0.94rem;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    input:focus, select:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.18);
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
     button {
-      padding: 9px 16px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer;
-      background: var(--accent); color: #0f172a; transition: background 0.15s;
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      color: #09090b;
+      background: linear-gradient(135deg, var(--cyan), var(--mint));
+      box-shadow: 0 4px 18px rgba(34, 211, 238, 0.25);
+      transition: transform 0.12s ease, opacity 0.15s ease, box-shadow 0.15s ease;
     }
-    button:hover { background: var(--accent-hover); }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    button.secondary { background: #334155; color: var(--text); }
-    button.danger { background: var(--danger); color: #fff; }
-    .checks { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
-    .checks label { display: flex; align-items: center; gap: 6px; color: var(--text); cursor: pointer; margin: 0; }
-    .checks input[type="checkbox"] { width: auto; }
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(34, 211, 238, 0.38);
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.primary-pink {
+      color: #fff;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      box-shadow: 0 4px 18px rgba(255, 78, 205, 0.3);
+    }
+    button.secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: none;
+    }
+    button.danger {
+      background: linear-gradient(135deg, #fb7185, #e11d48);
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(225, 29, 72, 0.3);
+    }
+
+    .checks {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(9, 9, 14, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .checks label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text);
+      cursor: pointer;
+      margin: 0;
+      font-size: 0.88rem;
+    }
+    .checks input[type="checkbox"] { width: auto; accent-color: var(--pink); }
+
     .list-box {
-      max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;
-      background: #0f172a; padding: 10px; margin-top: 10px;
+      max-height: 240px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      background: rgba(9, 9, 14, 0.72);
+      padding: 12px;
+      margin-top: 12px;
     }
-    .item-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 6px; border-bottom: 1px solid #1e293b; font-size: 0.9rem; }
-    .item-row label { display: flex; align-items: center; gap: 8px; color: var(--text); margin: 0; cursor: pointer; }
-    .item-row input[type="checkbox"] { width: auto; }
-    .muted { color: var(--muted); font-size: 0.85rem; }
-    .progress-wrap { background: #0f172a; border-radius: 999px; height: 14px; overflow: hidden; border: 1px solid var(--border); margin: 8px 0; }
-    .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.25s; }
-    .progress-bar.green { background: var(--success); }
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.88rem;
+      gap: 10px;
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-row label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      margin: 0;
+      cursor: pointer;
+      word-break: break-all;
+    }
+    .item-row input[type="checkbox"] { width: auto; accent-color: var(--cyan); }
+
+    .muted { color: var(--muted); font-size: 0.84rem; }
+    .progress-wrap {
+      background: rgba(9, 9, 14, 0.8);
+      border-radius: 999px;
+      height: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin: 7px 0;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--pink), var(--purple), var(--cyan));
+      transition: width 0.25s ease;
+    }
+    .progress-bar.mint {
+      background: linear-gradient(90deg, var(--cyan), var(--mint));
+    }
+
     pre.logs {
-      background: #020617; border: 1px solid var(--border); border-radius: 8px; padding: 12px;
-      max-height: 220px; overflow-y: auto; font-size: 0.82rem; color: #cbd5e1; margin: 10px 0 0;
+      background: rgba(4, 4, 8, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 12px;
+      max-height: 220px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.81rem;
+      color: #e4e4e7;
+      margin: 12px 0 0;
     }
+
+    details.guide {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.28);
+      font-size: 0.86rem;
+    }
+    details.guide summary { cursor: pointer; font-weight: 600; color: #ddd6fe; }
+    details.guide ol { margin: 8px 0 0 18px; padding: 0; color: #d4d4d8; line-height: 1.55; }
+    details.guide a { color: var(--cyan); }
+
     .hidden { display: none; }
-    .msg { margin-top: 8px; font-size: 0.9rem; color: var(--warn); }
+    .msg { margin-top: 10px; font-size: 0.88rem; color: var(--amber); font-weight: 500; }
   </style>
 </head>
 <body>
+  <div class="aurora">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="blob blob-4"></div>
+  </div>
+
   <div class="container">
     <header>
-      <h1>Telegram Bulk Uploader</h1>
+      <div class="brand">
+        <div class="logo-pill">🚀</div>
+        <div>
+          <h1>Telegram Bulk Uploader</h1>
+          <p class="subtitle">Zero-compression archiving · 2GB/4GB safe · Background queue</p>
+        </div>
+      </div>
       <span id="authBadge" class="badge">Checking session...</span>
     </header>
 
     <!-- 1. Telegram Login -->
     <section class="card" id="authCard">
-      <h2>1. Telegram Account Login</h2>
+      <div class="card-header">
+        <h2><span class="step-tag">STEP 1</span> Connect Telegram</h2>
+      </div>
+
       <div id="loggedOutView">
         <div class="grid">
           <div>
-            <label>API ID (from my.telegram.org)</label>
+            <label>API ID</label>
             <input id="apiId" type="number" placeholder="12345678" />
           </div>
           <div>
@@ -89,8 +370,9 @@
           </div>
         </div>
         <div class="row">
-          <button id="sendCodeBtn" onclick="sendCode()">Send Login Code</button>
+          <button id="sendCodeBtn" class="primary-pink" onclick="sendCode()">Send Login Code ✨</button>
         </div>
+
         <div id="otpSection" class="grid hidden" style="margin-top: 14px;">
           <div>
             <label>Telegram Verification Code</label>
@@ -104,9 +386,19 @@
             <button onclick="verifyCode()">Verify &amp; Sign In</button>
           </div>
         </div>
+
+        <details class="guide">
+          <summary>Need an API ID &amp; API Hash? (Takes 30 seconds)</summary>
+          <ol>
+            <li>Open <a href="https://my.telegram.org" target="_blank" rel="noopener">my.telegram.org</a> and sign in with your phone number.</li>
+            <li>Click <strong>API development tools</strong> and create an app (any title &amp; short name).</li>
+            <li>Copy your <code>App api_id</code> and <code>App api_hash</code> into the fields above — they stay local in your <code>.env</code> file.</li>
+          </ol>
+        </details>
       </div>
+
       <div id="loggedInView" class="hidden">
-        <p id="userSummary" style="margin:0 0 10px;"></p>
+        <p id="userSummary" style="margin:0 0 12px; font-weight: 500;"></p>
         <button class="secondary" onclick="logout()">Log Out</button>
       </div>
       <div id="authMsg" class="msg"></div>
@@ -114,27 +406,30 @@
 
     <!-- 2. Folder & File Selection -->
     <section class="card">
-      <h2>2. Select Folders, Files &amp; Target</h2>
+      <div class="card-header">
+        <h2><span class="step-tag">STEP 2</span> Pick Folders, Files &amp; Destination</h2>
+      </div>
+
       <div class="grid">
         <div>
           <label>Local Source Folder Path</label>
           <input id="sourcePath" type="text" placeholder="D:\Photos\2025" />
         </div>
         <div>
-          <label>Target Chat / Channel</label>
+          <label>Target Chat / Private Channel</label>
           <select id="targetSelect" onchange="syncTargetInput()">
             <option value="me">Saved Messages (me)</option>
           </select>
         </div>
         <div>
-          <label>Or Custom Target (@username or ID)</label>
+          <label>Custom Target (@username or ID)</label>
           <input id="targetCustom" type="text" value="me" />
         </div>
       </div>
 
       <div class="grid" style="margin-top: 12px;">
         <div>
-          <label>Extensions Filter (optional, space-separated)</label>
+          <label>Extensions Filter (optional)</label>
           <input id="extFilter" type="text" placeholder=".jpg .mp4 .mov" />
         </div>
         <div>
@@ -142,19 +437,19 @@
           <input id="includeGlob" type="text" placeholder="*.jpg IMG_*" />
         </div>
         <div>
-          <label>Delay Between Uploads (seconds)</label>
+          <label>Delay Between Uploads (sec)</label>
           <input id="delayInput" type="number" step="0.5" value="1.5" />
         </div>
       </div>
 
       <div class="checks">
-        <label><input type="checkbox" id="splitLarge" checked /> Split &gt;2GB/4GB videos losslessly (FFmpeg)</label>
-        <label><input type="checkbox" id="premiumMode" /> Telegram Premium (4GB limit)</label>
-        <label><input type="checkbox" id="compressMedia" /> Compress media (streamable)</label>
+        <label><input type="checkbox" id="splitLarge" checked /> ✂️ Auto-split &gt;2GB/4GB videos losslessly (FFmpeg)</label>
+        <label><input type="checkbox" id="premiumMode" /> ⭐ Telegram Premium (4GB limit)</label>
+        <label><input type="checkbox" id="compressMedia" /> 🗜️ Compress media (streamable)</label>
       </div>
 
       <div class="row">
-        <button onclick="scanFolder()">Scan Folder</button>
+        <button onclick="scanFolder()">🔍 Scan Folder</button>
         <button class="secondary" onclick="selectAllFiles(true)">Select All</button>
         <button class="secondary" onclick="selectAllFiles(false)">Select None</button>
         <span id="scanSummary" class="muted"></span>
@@ -167,28 +462,31 @@
 
     <!-- 3. Background Upload Manager -->
     <section class="card">
-      <h2>3. Background Upload Manager</h2>
-      <div class="row">
-        <button id="startBtn" onclick="startUpload()">Start Background Upload</button>
-        <button id="stopBtn" class="danger" onclick="stopUpload()" disabled>Stop Upload</button>
+      <div class="card-header">
+        <h2><span class="step-tag">STEP 3</span> Background Upload Queue</h2>
         <span id="statusText" class="muted">Idle</span>
       </div>
 
-      <div style="margin-top: 14px;">
+      <div class="row" style="margin-top: 0;">
+        <button id="startBtn" class="primary-pink" onclick="startUpload()">▶ Start Background Upload</button>
+        <button id="stopBtn" class="danger" onclick="stopUpload()" disabled>■ Stop Upload</button>
+      </div>
+
+      <div style="margin-top: 16px;">
         <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
           <span>Overall Queue</span>
           <span id="overallLabel">0 / 0</span>
         </div>
-        <div class="progress-wrap"><div id="overallBar" class="progress-bar green"></div></div>
+        <div class="progress-wrap"><div id="overallBar" class="progress-bar mint"></div></div>
 
-        <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-top:10px;">
           <span id="currentFileLabel">Current file: —</span>
           <span id="currentPctLabel">0%</span>
         </div>
         <div class="progress-wrap"><div id="currentBar" class="progress-bar"></div></div>
       </div>
 
-      <pre id="logsBox" class="logs">Logs will appear here...</pre>
+      <pre id="logsBox" class="logs">Logs will stream here once your upload starts...</pre>
     </section>
   </div>
 
@@ -213,7 +511,7 @@
       if (data.phone) document.getElementById("phone").value = data.phone;
 
       if (data.authorized) {
-        badge.textContent = `Connected: ${data.user.first_name || data.user.phone}`;
+        badge.textContent = `● Connected: ${data.user.first_name || data.user.phone}`;
         badge.classList.add("ok");
         loggedOut.classList.add("hidden");
         loggedIn.classList.remove("hidden");
@@ -221,7 +519,7 @@
           `Signed in as ${data.user.first_name} (@${data.user.username || "no-username"}, ${data.user.phone})`;
         loadDialogs();
       } else {
-        badge.textContent = "Not Logged In";
+        badge.textContent = "○ Not Logged In";
         badge.classList.remove("ok");
         loggedOut.classList.remove("hidden");
         loggedIn.classList.add("hidden");
@@ -312,6 +610,10 @@
       }
     }
 
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
     function renderFoldersAndFiles(folders, files) {
       const fBox = document.getElementById("folderList");
       const fileBox = document.getElementById("fileList");
@@ -321,18 +623,22 @@
       fBox.innerHTML = "<strong>Folders</strong>" + folders.map(f => `
         <div class="item-row">
           <label>
-            <input type="checkbox" checked onchange="toggleFolder('${f.folder.replace(/'/g, "\\'")}', this.checked)" />
-            📁 ${f.folder}
+            <input type="checkbox" checked data-folder-toggle="${escapeHtml(f.folder)}" />
+            📁 ${escapeHtml(f.folder)}
           </label>
           <span class="muted">${f.count} files · ${f.size_human} (${f.uploaded_count} done)</span>
         </div>
       `).join("");
 
-      fileBox.innerHTML = "<strong>Files</strong>" + files.map((f, idx) => `
+      fBox.querySelectorAll("input[data-folder-toggle]").forEach(cb => {
+        cb.addEventListener("change", () => toggleFolder(cb.dataset.folderToggle, cb.checked));
+      });
+
+      fileBox.innerHTML = "<strong>Files</strong>" + files.map(f => `
         <div class="item-row">
           <label>
-            <input type="checkbox" class="file-cb" data-folder="${f.folder}" data-rel="${f.rel_path}" ${f.uploaded ? "" : "checked"} />
-            ${f.rel_posix} ${f.uploaded ? '<span class="muted">(uploaded)</span>' : ""}
+            <input type="checkbox" class="file-cb" data-folder="${escapeHtml(f.folder)}" data-rel="${escapeHtml(f.rel_path)}" ${f.uploaded ? "" : "checked"} />
+            ${escapeHtml(f.rel_posix)} ${f.uploaded ? '<span class="muted">(uploaded)</span>' : ""}
           </label>
           <span class="muted">${f.size_human}</span>
         </div>
