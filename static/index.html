@@ -3,710 +3,562 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Telegram Bulk Uploader ✨</title>
+  <title>Telegram Bulk Uploader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg-base: #09090b;
-      --glass: rgba(24, 24, 34, 0.68);
-      --glass-border: rgba(255, 255, 255, 0.12);
+      --bg: #09090b;
+      --surface: rgba(23, 23, 26, 0.85);
+      --surface-hover: rgba(30, 30, 36, 0.92);
+      --border: rgba(255, 255, 255, 0.07);
+      --border-hover: rgba(255, 255, 255, 0.14);
       --text: #fafafa;
-      --muted: #a1a1aa;
-      --pink: #ff4ecd;
-      --purple: #8b5cf6;
-      --cyan: #22d3ee;
-      --mint: #34d399;
-      --amber: #fbbf24;
-      --danger: #fb7185;
+      --text-secondary: #a1a1aa;
+      --text-tertiary: #71717a;
+      --gold: #d4a853;
+      --gold-soft: rgba(212, 168, 83, 0.12);
+      --gold-border: rgba(212, 168, 83, 0.25);
+      --emerald: #34d399;
+      --emerald-soft: rgba(52, 211, 153, 0.1);
+      --rose: #fb7185;
+      --rose-soft: rgba(251, 113, 133, 0.1);
+      --radius: 14px;
+      --radius-sm: 10px;
     }
 
-    * {
-      box-sizing: border-box;
-      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      background: var(--bg-base);
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
       color: var(--text);
-      padding: 28px 18px 48px;
-      position: relative;
-      overflow-x: hidden;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Vibrant Aurora / Mesh Gradient Background */
-    .aurora {
+    /* Subtle grain texture */
+    body::before {
+      content: "";
       position: fixed;
       inset: 0;
-      z-index: -1;
-      overflow: hidden;
+      z-index: 0;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
       pointer-events: none;
     }
-    .blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(95px);
-      opacity: 0.42;
-      animation: float 14s ease-in-out infinite alternate;
-    }
-    .blob-1 { width: 460px; height: 460px; background: var(--pink); top: -120px; left: -100px; }
-    .blob-2 { width: 520px; height: 520px; background: var(--purple); top: 20%; right: -140px; animation-delay: -4s; }
-    .blob-3 { width: 420px; height: 420px; background: var(--cyan); bottom: -120px; left: 22%; animation-delay: -8s; }
-    .blob-4 { width: 300px; height: 300px; background: var(--mint); bottom: 10%; right: 18%; opacity: 0.25; animation-delay: -11s; }
 
-    @keyframes float {
-      0% { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(35px, -25px) scale(1.08); }
+    /* Soft top glow */
+    .glow {
+      position: fixed;
+      top: -260px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 500px;
+      background: radial-gradient(ellipse, rgba(212, 168, 83, 0.09) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
     }
 
-    .container {
-      max-width: 1060px;
+    .shell {
+      position: relative;
+      z-index: 1;
+      max-width: 980px;
       margin: 0 auto;
-      display: grid;
-      gap: 22px;
+      padding: 36px 20px 56px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
 
+    /* Header */
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 14px;
-      padding: 6px 4px;
+      gap: 12px;
     }
-
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
     }
-    .logo-pill {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
       display: grid;
       place-items: center;
-      font-size: 1.35rem;
-      background: linear-gradient(135deg, var(--pink), var(--purple), var(--cyan));
-      box-shadow: 0 0 24px rgba(255, 78, 205, 0.45);
+      font-size: 1.2rem;
+      background: linear-gradient(135deg, var(--gold) 0%, #b8860b 100%);
+      box-shadow: 0 0 32px rgba(212, 168, 83, 0.25);
     }
-    header h1 {
-      margin: 0;
-      font-size: 1.65rem;
+    .brand h1 {
+      font-size: 1.45rem;
       font-weight: 800;
-      letter-spacing: -0.02em;
-      background: linear-gradient(90deg, #fff 0%, #f0abfc 50%, #67e8f9 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.03em;
+      color: var(--text);
     }
-    .subtitle {
-      margin: 2px 0 0;
-      font-size: 0.85rem;
-      color: var(--muted);
+    .brand p {
+      font-size: 0.78rem;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
-
     .badge {
-      padding: 8px 14px;
+      padding: 7px 14px;
       border-radius: 999px;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: 600;
-      background: rgba(15, 15, 22, 0.75);
-      border: 1px solid var(--glass-border);
-      backdrop-filter: blur(10px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      letter-spacing: 0.01em;
     }
     .badge.ok {
-      border-color: rgba(52, 211, 153, 0.55);
-      color: var(--mint);
-      box-shadow: 0 0 18px rgba(52, 211, 153, 0.2);
+      border-color: var(--gold-border);
+      color: var(--gold);
+      background: var(--gold-soft);
     }
 
+    /* Cards */
     .card {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
-      border-radius: 20px;
-      padding: 22px;
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-      transition: border-color 0.2s ease, transform 0.2s ease;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s;
     }
-    .card:hover {
-      border-color: rgba(255, 255, 255, 0.22);
-    }
-    .card-header {
+    .card:hover { border-color: var(--border-hover); }
+    .card-head {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 10px;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
-    .card h2 {
-      margin: 0;
-      font-size: 1.15rem;
+    .card-head h2 {
+      font-size: 1rem;
       font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
-    .step-tag {
-      font-size: 0.75rem;
+    .step {
+      font-size: 0.65rem;
       font-weight: 700;
-      padding: 3px 9px;
-      border-radius: 999px;
-      background: linear-gradient(135deg, rgba(255, 78, 205, 0.22), rgba(139, 92, 246, 0.22));
-      border: 1px solid rgba(255, 78, 205, 0.35);
-      color: #f5d0fe;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--gold-soft);
+      border: 1px solid var(--gold-border);
+      color: var(--gold);
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px;
-    }
+    /* Form elements */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
     label {
       display: block;
-      font-size: 0.82rem;
+      font-size: 0.77rem;
       font-weight: 500;
-      color: #d4d4d8;
-      margin-bottom: 5px;
+      color: var(--text-tertiary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
     input, select {
       width: 100%;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(9, 9, 14, 0.72);
+      padding: 10px 13px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: rgba(9, 9, 11, 0.7);
       color: var(--text);
-      font-size: 0.94rem;
+      font-size: 0.9rem;
+      font-family: inherit;
       outline: none;
       transition: border-color 0.15s, box-shadow 0.15s;
     }
     input:focus, select:focus {
-      border-color: var(--cyan);
-      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.18);
+      border-color: rgba(212, 168, 83, 0.5);
+      box-shadow: 0 0 0 3px rgba(212, 168, 83, 0.08);
     }
+    input::placeholder { color: var(--text-tertiary); }
 
-    .row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
+    /* Buttons */
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
     button {
       padding: 10px 18px;
-      border-radius: 12px;
-      border: none;
-      font-weight: 700;
-      font-size: 0.9rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      font-weight: 600;
+      font-size: 0.85rem;
+      font-family: inherit;
       cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: -0.01em;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold), #c49b3a);
       color: #09090b;
-      background: linear-gradient(135deg, var(--cyan), var(--mint));
-      box-shadow: 0 4px 18px rgba(34, 211, 238, 0.25);
-      transition: transform 0.12s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 2px 16px rgba(212, 168, 83, 0.2);
     }
-    button:hover:not(:disabled) {
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 4px 24px rgba(212, 168, 83, 0.35);
       transform: translateY(-1px);
-      box-shadow: 0 6px 24px rgba(34, 211, 238, 0.38);
     }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    button.primary-pink {
-      color: #fff;
-      background: linear-gradient(135deg, var(--pink), var(--purple));
-      box-shadow: 0 4px 18px rgba(255, 78, 205, 0.3);
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border-color: var(--border);
     }
-    button.secondary {
-      background: rgba(255, 255, 255, 0.08);
+    .btn-ghost:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: var(--border-hover);
       color: var(--text);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      box-shadow: none;
     }
-    button.danger {
-      background: linear-gradient(135deg, #fb7185, #e11d48);
-      color: #fff;
-      box-shadow: 0 4px 18px rgba(225, 29, 72, 0.3);
+    .btn-danger {
+      background: var(--rose-soft);
+      color: var(--rose);
+      border-color: rgba(251, 113, 133, 0.2);
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(251, 113, 133, 0.18);
     }
 
-    .checks {
+    /* Toggles row */
+    .toggles {
       display: flex;
-      gap: 18px;
+      gap: 20px;
       flex-wrap: wrap;
-      margin-top: 14px;
-      padding: 10px 14px;
-      border-radius: 12px;
-      background: rgba(9, 9, 14, 0.45);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      background: rgba(9, 9, 11, 0.5);
+      border: 1px solid var(--border);
     }
-    .checks label {
+    .toggles label {
       display: flex;
       align-items: center;
       gap: 7px;
-      color: var(--text);
+      text-transform: none;
+      letter-spacing: normal;
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: var(--text-secondary);
       cursor: pointer;
       margin: 0;
-      font-size: 0.88rem;
     }
-    .checks input[type="checkbox"] { width: auto; accent-color: var(--pink); }
+    .toggles input[type="checkbox"] {
+      width: auto;
+      accent-color: var(--gold);
+    }
 
+    /* List boxes */
     .list-box {
-      max-height: 240px;
+      max-height: 230px;
       overflow-y: auto;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 14px;
-      background: rgba(9, 9, 14, 0.72);
-      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: rgba(9, 9, 11, 0.6);
+      padding: 10px;
       margin-top: 12px;
     }
-    .item-row {
+    .list-box strong { font-size: 0.78rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; }
+    .item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 6px 8px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      font-size: 0.88rem;
+      padding: 7px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.86rem;
       gap: 10px;
     }
-    .item-row:last-child { border-bottom: none; }
-    .item-row label {
+    .item:last-child { border-bottom: none; }
+    .item label {
       display: flex;
       align-items: center;
       gap: 8px;
       color: var(--text);
-      margin: 0;
+      text-transform: none;
+      letter-spacing: normal;
+      font-size: 0.86rem;
+      font-weight: 400;
       cursor: pointer;
+      margin: 0;
       word-break: break-all;
     }
-    .item-row input[type="checkbox"] { width: auto; accent-color: var(--cyan); }
+    .item input[type="checkbox"] { width: auto; accent-color: var(--gold); }
 
-    .muted { color: var(--muted); font-size: 0.84rem; }
-    .progress-wrap {
-      background: rgba(9, 9, 14, 0.8);
+    .muted { color: var(--text-tertiary); font-size: 0.82rem; }
+
+    /* Progress */
+    .progress-track {
+      background: rgba(255, 255, 255, 0.05);
       border-radius: 999px;
-      height: 14px;
+      height: 8px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      margin: 7px 0;
+      margin: 6px 0;
     }
-    .progress-bar {
+    .progress-fill {
       height: 100%;
-      width: 0%;
       border-radius: 999px;
-      background: linear-gradient(90deg, var(--pink), var(--purple), var(--cyan));
-      transition: width 0.25s ease;
+      width: 0%;
+      transition: width 0.3s ease;
     }
-    .progress-bar.mint {
-      background: linear-gradient(90deg, var(--cyan), var(--mint));
-    }
+    .progress-fill.gold { background: linear-gradient(90deg, #b8860b, var(--gold), #e8c547); }
+    .progress-fill.emerald { background: linear-gradient(90deg, #059669, var(--emerald)); }
 
+    /* Logs */
     pre.logs {
-      background: rgba(4, 4, 8, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 14px;
-      padding: 12px;
-      max-height: 220px;
+      background: rgba(4, 4, 6, 0.9);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      max-height: 200px;
       overflow-y: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.81rem;
-      color: #e4e4e7;
-      margin: 12px 0 0;
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      line-height: 1.55;
+      color: var(--text-secondary);
+      margin: 14px 0 0;
     }
 
+    /* Guide */
     details.guide {
-      margin-top: 12px;
-      padding: 10px 14px;
-      border-radius: 12px;
-      background: rgba(139, 92, 246, 0.1);
-      border: 1px solid rgba(139, 92, 246, 0.28);
-      font-size: 0.86rem;
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      background: var(--gold-soft);
+      border: 1px solid var(--gold-border);
+      font-size: 0.84rem;
     }
-    details.guide summary { cursor: pointer; font-weight: 600; color: #ddd6fe; }
-    details.guide ol { margin: 8px 0 0 18px; padding: 0; color: #d4d4d8; line-height: 1.55; }
-    details.guide a { color: var(--cyan); }
+    details.guide summary { cursor: pointer; font-weight: 600; color: var(--gold); }
+    details.guide ol { margin: 10px 0 0 20px; color: var(--text-secondary); line-height: 1.6; }
+    details.guide code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.82rem; }
+    details.guide a { color: var(--gold); }
 
     .hidden { display: none; }
-    .msg { margin-top: 10px; font-size: 0.88rem; color: var(--amber); font-weight: 500; }
+    .msg { margin-top: 10px; font-size: 0.86rem; color: var(--gold); font-weight: 500; }
   </style>
 </head>
 <body>
-  <div class="aurora">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
-    <div class="blob blob-4"></div>
-  </div>
+  <div class="glow"></div>
 
-  <div class="container">
+  <div class="shell">
     <header>
       <div class="brand">
-        <div class="logo-pill">🚀</div>
+        <div class="brand-icon">📡</div>
         <div>
           <h1>Telegram Bulk Uploader</h1>
-          <p class="subtitle">Zero-compression archiving · 2GB/4GB safe · Background queue</p>
+          <p>Zero-compression archiver</p>
         </div>
       </div>
-      <span id="authBadge" class="badge">Checking session...</span>
+      <span id="authBadge" class="badge">Checking...</span>
     </header>
 
-    <!-- 1. Telegram Login -->
+    <!-- 1. Auth -->
     <section class="card" id="authCard">
-      <div class="card-header">
-        <h2><span class="step-tag">STEP 1</span> Connect Telegram</h2>
+      <div class="card-head">
+        <h2><span class="step">Step 1</span> Connect Telegram</h2>
       </div>
-
       <div id="loggedOutView">
         <div class="grid">
-          <div>
-            <label>API ID</label>
-            <input id="apiId" type="number" placeholder="12345678" />
-          </div>
-          <div>
-            <label>API Hash</label>
-            <input id="apiHash" type="text" placeholder="your_api_hash" />
-          </div>
-          <div>
-            <label>Phone Number (with country code)</label>
-            <input id="phone" type="text" placeholder="+1234567890" />
-          </div>
+          <div><label>API ID</label><input id="apiId" type="number" placeholder="12345678" /></div>
+          <div><label>API Hash</label><input id="apiHash" type="text" placeholder="your_api_hash" /></div>
+          <div><label>Phone Number</label><input id="phone" type="text" placeholder="+1234567890" /></div>
         </div>
         <div class="row">
-          <button id="sendCodeBtn" class="primary-pink" onclick="sendCode()">Send Login Code ✨</button>
+          <button class="btn-primary" onclick="sendCode()">Send Login Code</button>
         </div>
-
-        <div id="otpSection" class="grid hidden" style="margin-top: 14px;">
-          <div>
-            <label>Telegram Verification Code</label>
-            <input id="otpCode" type="text" placeholder="12345" />
-          </div>
-          <div id="passwordWrap" class="hidden">
-            <label>2FA Password (if enabled)</label>
-            <input id="twoFaPassword" type="password" placeholder="2FA password" />
-          </div>
-          <div style="display:flex; align-items:end;">
-            <button onclick="verifyCode()">Verify &amp; Sign In</button>
-          </div>
+        <div id="otpSection" class="grid hidden" style="margin-top:14px;">
+          <div><label>Verification Code</label><input id="otpCode" type="text" placeholder="12345" /></div>
+          <div id="passwordWrap" class="hidden"><label>2FA Password</label><input id="twoFaPassword" type="password" placeholder="Password" /></div>
+          <div style="display:flex;align-items:end;"><button class="btn-primary" onclick="verifyCode()">Verify &amp; Sign In</button></div>
         </div>
-
         <details class="guide">
-          <summary>Need an API ID &amp; API Hash? (Takes 30 seconds)</summary>
+          <summary>Where do I get API ID &amp; Hash?</summary>
           <ol>
-            <li>Open <a href="https://my.telegram.org" target="_blank" rel="noopener">my.telegram.org</a> and sign in with your phone number.</li>
-            <li>Click <strong>API development tools</strong> and create an app (any title &amp; short name).</li>
-            <li>Copy your <code>App api_id</code> and <code>App api_hash</code> into the fields above — they stay local in your <code>.env</code> file.</li>
+            <li>Open <a href="https://my.telegram.org" target="_blank">my.telegram.org</a> and sign in.</li>
+            <li>Click <strong>API development tools</strong> → create an app.</li>
+            <li>Copy <code>api_id</code> and <code>api_hash</code> into the fields above.</li>
           </ol>
         </details>
       </div>
-
       <div id="loggedInView" class="hidden">
-        <p id="userSummary" style="margin:0 0 12px; font-weight: 500;"></p>
-        <button class="secondary" onclick="logout()">Log Out</button>
+        <p id="userSummary" style="font-weight:500;margin-bottom:12px;"></p>
+        <button class="btn-ghost" onclick="logout()">Log Out</button>
       </div>
       <div id="authMsg" class="msg"></div>
     </section>
 
-    <!-- 2. Folder & File Selection -->
+    <!-- 2. Source & Target -->
     <section class="card">
-      <div class="card-header">
-        <h2><span class="step-tag">STEP 2</span> Pick Folders, Files &amp; Destination</h2>
+      <div class="card-head">
+        <h2><span class="step">Step 2</span> Select Source &amp; Destination</h2>
       </div>
-
       <div class="grid">
-        <div>
-          <label>Local Source Folder Path</label>
-          <input id="sourcePath" type="text" placeholder="D:\Photos\2025" />
+        <div><label>Source Folder</label><input id="sourcePath" type="text" placeholder="D:\Photos\2025" /></div>
+        <div><label>Target Chat</label>
+          <select id="targetSelect" onchange="syncTargetInput()"><option value="me">Saved Messages (me)</option></select>
         </div>
-        <div>
-          <label>Target Chat / Private Channel</label>
-          <select id="targetSelect" onchange="syncTargetInput()">
-            <option value="me">Saved Messages (me)</option>
-          </select>
-        </div>
-        <div>
-          <label>Custom Target (@username or ID)</label>
-          <input id="targetCustom" type="text" value="me" />
-        </div>
+        <div><label>Custom Target</label><input id="targetCustom" type="text" value="me" /></div>
       </div>
-
-      <div class="grid" style="margin-top: 12px;">
-        <div>
-          <label>Extensions Filter (optional)</label>
-          <input id="extFilter" type="text" placeholder=".jpg .mp4 .mov" />
-        </div>
-        <div>
-          <label>Include Glob Patterns (optional)</label>
-          <input id="includeGlob" type="text" placeholder="*.jpg IMG_*" />
-        </div>
-        <div>
-          <label>Delay Between Uploads (sec)</label>
-          <input id="delayInput" type="number" step="0.5" value="1.5" />
-        </div>
+      <div class="grid" style="margin-top:14px;">
+        <div><label>Extension Filter</label><input id="extFilter" type="text" placeholder=".jpg .mp4 .mov" /></div>
+        <div><label>Include Patterns</label><input id="includeGlob" type="text" placeholder="*.jpg IMG_*" /></div>
+        <div><label>Upload Delay (sec)</label><input id="delayInput" type="number" step="0.5" value="1.5" /></div>
       </div>
-
-      <div class="checks">
-        <label><input type="checkbox" id="splitLarge" checked /> ✂️ Auto-split &gt;2GB/4GB videos losslessly (FFmpeg)</label>
-        <label><input type="checkbox" id="premiumMode" /> ⭐ Telegram Premium (4GB limit)</label>
-        <label><input type="checkbox" id="compressMedia" /> 🗜️ Compress media (streamable)</label>
+      <div class="toggles">
+        <label><input type="checkbox" id="splitLarge" checked /> Auto-split &gt;2GB videos (FFmpeg)</label>
+        <label><input type="checkbox" id="premiumMode" /> Premium 4GB limit</label>
+        <label><input type="checkbox" id="compressMedia" /> Compress media</label>
       </div>
-
       <div class="row">
-        <button onclick="scanFolder()">🔍 Scan Folder</button>
-        <button class="secondary" onclick="selectAllFiles(true)">Select All</button>
-        <button class="secondary" onclick="selectAllFiles(false)">Select None</button>
+        <button class="btn-primary" onclick="scanFolder()">Scan Folder</button>
+        <button class="btn-ghost" onclick="selectAllFiles(true)">Select All</button>
+        <button class="btn-ghost" onclick="selectAllFiles(false)">Clear</button>
         <span id="scanSummary" class="muted"></span>
       </div>
-
       <div id="folderList" class="list-box hidden"></div>
       <div id="fileList" class="list-box hidden"></div>
       <div id="browseMsg" class="msg"></div>
     </section>
 
-    <!-- 3. Background Upload Manager -->
+    <!-- 3. Upload Queue -->
     <section class="card">
-      <div class="card-header">
-        <h2><span class="step-tag">STEP 3</span> Background Upload Queue</h2>
+      <div class="card-head">
+        <h2><span class="step">Step 3</span> Upload Queue</h2>
         <span id="statusText" class="muted">Idle</span>
       </div>
-
-      <div class="row" style="margin-top: 0;">
-        <button id="startBtn" class="primary-pink" onclick="startUpload()">▶ Start Background Upload</button>
-        <button id="stopBtn" class="danger" onclick="stopUpload()" disabled>■ Stop Upload</button>
+      <div class="row" style="margin-top:0;">
+        <button id="startBtn" class="btn-primary" onclick="startUpload()">▶ Start Upload</button>
+        <button id="stopBtn" class="btn-danger" onclick="stopUpload()" disabled>■ Stop</button>
       </div>
-
-      <div style="margin-top: 16px;">
-        <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
-          <span>Overall Queue</span>
-          <span id="overallLabel">0 / 0</span>
+      <div style="margin-top:18px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-tertiary);">
+          <span>Queue Progress</span><span id="overallLabel">0 / 0</span>
         </div>
-        <div class="progress-wrap"><div id="overallBar" class="progress-bar mint"></div></div>
-
-        <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-top:10px;">
-          <span id="currentFileLabel">Current file: —</span>
-          <span id="currentPctLabel">0%</span>
+        <div class="progress-track"><div id="overallBar" class="progress-fill emerald"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-tertiary);margin-top:10px;">
+          <span id="currentFileLabel">Current: —</span><span id="currentPctLabel">0%</span>
         </div>
-        <div class="progress-wrap"><div id="currentBar" class="progress-bar"></div></div>
+        <div class="progress-track"><div id="currentBar" class="progress-fill gold"></div></div>
       </div>
-
-      <pre id="logsBox" class="logs">Logs will stream here once your upload starts...</pre>
+      <pre id="logsBox" class="logs">Waiting for upload to start...</pre>
     </section>
   </div>
 
   <script>
     let scannedFiles = [];
-
-    async function api(url, method = "GET", body = null) {
-      const opts = { method, headers: { "Content-Type": "application/json" } };
+    async function api(url, method="GET", body=null) {
+      const opts = { method, headers: {"Content-Type":"application/json"} };
       if (body) opts.body = JSON.stringify(body);
       const res = await fetch(url, opts);
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Request failed");
       return data;
     }
-
     async function checkAuth() {
-      const data = await api("/api/auth/status");
+      const d = await api("/api/auth/status");
       const badge = document.getElementById("authBadge");
-      const loggedOut = document.getElementById("loggedOutView");
-      const loggedIn = document.getElementById("loggedInView");
-      if (data.api_id) document.getElementById("apiId").value = data.api_id;
-      if (data.phone) document.getElementById("phone").value = data.phone;
-
-      if (data.authorized) {
-        badge.textContent = `● Connected: ${data.user.first_name || data.user.phone}`;
+      if (d.api_id) document.getElementById("apiId").value = d.api_id;
+      if (d.phone) document.getElementById("phone").value = d.phone;
+      if (d.authorized) {
+        badge.textContent = `● ${d.user.first_name || d.user.phone}`;
         badge.classList.add("ok");
-        loggedOut.classList.add("hidden");
-        loggedIn.classList.remove("hidden");
+        document.getElementById("loggedOutView").classList.add("hidden");
+        document.getElementById("loggedInView").classList.remove("hidden");
         document.getElementById("userSummary").textContent =
-          `Signed in as ${data.user.first_name} (@${data.user.username || "no-username"}, ${data.user.phone})`;
+          `Signed in as ${d.user.first_name} (@${d.user.username||"—"}, ${d.user.phone})`;
         loadDialogs();
       } else {
-        badge.textContent = "○ Not Logged In";
+        badge.textContent = "Not connected";
         badge.classList.remove("ok");
-        loggedOut.classList.remove("hidden");
-        loggedIn.classList.add("hidden");
+        document.getElementById("loggedOutView").classList.remove("hidden");
+        document.getElementById("loggedInView").classList.add("hidden");
       }
     }
-
     async function loadDialogs() {
       try {
-        const data = await api("/api/dialogs");
+        const d = await api("/api/dialogs");
         const sel = document.getElementById("targetSelect");
         sel.innerHTML = "";
-        data.dialogs.forEach(d => {
-          const opt = document.createElement("option");
-          opt.value = d.id;
-          opt.textContent = `${d.name} [${d.type}]`;
-          sel.appendChild(opt);
-        });
+        d.dialogs.forEach(x => { const o=document.createElement("option"); o.value=x.id; o.textContent=`${x.name} [${x.type}]`; sel.appendChild(o); });
       } catch {}
     }
-
-    function syncTargetInput() {
-      document.getElementById("targetCustom").value = document.getElementById("targetSelect").value;
-    }
-
+    function syncTargetInput() { document.getElementById("targetCustom").value = document.getElementById("targetSelect").value; }
     async function sendCode() {
-      const msg = document.getElementById("authMsg");
-      msg.textContent = "";
+      const msg = document.getElementById("authMsg"); msg.textContent = "";
       try {
-        const res = await api("/api/auth/send-code", "POST", {
-          api_id: parseInt(document.getElementById("apiId").value, 10),
-          api_hash: document.getElementById("apiHash").value,
-          phone: document.getElementById("phone").value,
-          save_env: true
-        });
-        if (res.already_authorized) return checkAuth();
+        const r = await api("/api/auth/send-code","POST",{api_id:parseInt(document.getElementById("apiId").value,10),api_hash:document.getElementById("apiHash").value,phone:document.getElementById("phone").value,save_env:true});
+        if (r.already_authorized) return checkAuth();
         document.getElementById("otpSection").classList.remove("hidden");
-        msg.textContent = "Verification code sent to your Telegram app.";
-      } catch (e) {
-        msg.textContent = e.message;
-      }
+        msg.textContent = "Code sent to your Telegram app.";
+      } catch (e) { msg.textContent = e.message; }
     }
-
     async function verifyCode() {
-      const msg = document.getElementById("authMsg");
-      msg.textContent = "";
+      const msg = document.getElementById("authMsg"); msg.textContent = "";
       try {
-        const res = await api("/api/auth/verify-code", "POST", {
-          code: document.getElementById("otpCode").value,
-          password: document.getElementById("twoFaPassword").value || null
-        });
-        if (res.needs_password) {
-          document.getElementById("passwordWrap").classList.remove("hidden");
-          msg.textContent = "2FA enabled. Please enter your password and click Verify again.";
-          return;
-        }
+        const r = await api("/api/auth/verify-code","POST",{code:document.getElementById("otpCode").value,password:document.getElementById("twoFaPassword").value||null});
+        if (r.needs_password) { document.getElementById("passwordWrap").classList.remove("hidden"); msg.textContent = "Enter your 2FA password."; return; }
         checkAuth();
-      } catch (e) {
-        msg.textContent = e.message;
-      }
+      } catch (e) { msg.textContent = e.message; }
     }
-
-    async function logout() {
-      try {
-        await api("/api/auth/logout", "POST");
-        checkAuth();
-      } catch (e) {
-        document.getElementById("authMsg").textContent = e.message;
-      }
-    }
-
+    async function logout() { try { await api("/api/auth/logout","POST"); checkAuth(); } catch (e) { document.getElementById("authMsg").textContent = e.message; } }
+    function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
     async function scanFolder() {
-      const msg = document.getElementById("browseMsg");
-      msg.textContent = "";
-      const extText = document.getElementById("extFilter").value.trim();
-      const globText = document.getElementById("includeGlob").value.trim();
+      const msg = document.getElementById("browseMsg"); msg.textContent = "";
+      const ext = document.getElementById("extFilter").value.trim();
+      const glob = document.getElementById("includeGlob").value.trim();
       try {
-        const data = await api("/api/browse", "POST", {
-          source: document.getElementById("sourcePath").value,
-          ext: extText ? extText.split(/\s+/) : null,
-          include_patterns: globText ? globText.split(/\s+/) : null
-        });
-        scannedFiles = data.files;
-        document.getElementById("scanSummary").textContent =
-          `${data.total_files} file(s) across ${data.folders.length} folder(s)`;
-        renderFoldersAndFiles(data.folders, data.files);
-      } catch (e) {
-        msg.textContent = e.message;
-      }
+        const d = await api("/api/browse","POST",{source:document.getElementById("sourcePath").value,ext:ext?ext.split(/\s+/):null,include_patterns:glob?glob.split(/\s+/):null});
+        scannedFiles = d.files;
+        document.getElementById("scanSummary").textContent = `${d.total_files} files · ${d.folders.length} folders`;
+        renderResults(d.folders, d.files);
+      } catch (e) { msg.textContent = e.message; }
     }
-
-    function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    function renderResults(folders, files) {
+      const fB = document.getElementById("folderList"), xB = document.getElementById("fileList");
+      fB.classList.remove("hidden"); xB.classList.remove("hidden");
+      fB.innerHTML = "<strong>Folders</strong>" + folders.map(f=>`<div class="item"><label><input type="checkbox" checked data-ft="${esc(f.folder)}" /> 📁 ${esc(f.folder)}</label><span class="muted">${f.count} files · ${f.size_human}</span></div>`).join("");
+      fB.querySelectorAll("input[data-ft]").forEach(cb => cb.addEventListener("change", () => toggleFolder(cb.dataset.ft, cb.checked)));
+      xB.innerHTML = "<strong>Files</strong>" + files.map(f=>`<div class="item"><label><input type="checkbox" class="fc" data-folder="${esc(f.folder)}" data-rel="${esc(f.rel_path)}" ${f.uploaded?"":"checked"} /> ${esc(f.rel_posix)} ${f.uploaded?'<span class="muted">(done)</span>':""}</label><span class="muted">${f.size_human}</span></div>`).join("");
     }
-
-    function renderFoldersAndFiles(folders, files) {
-      const fBox = document.getElementById("folderList");
-      const fileBox = document.getElementById("fileList");
-      fBox.classList.remove("hidden");
-      fileBox.classList.remove("hidden");
-
-      fBox.innerHTML = "<strong>Folders</strong>" + folders.map(f => `
-        <div class="item-row">
-          <label>
-            <input type="checkbox" checked data-folder-toggle="${escapeHtml(f.folder)}" />
-            📁 ${escapeHtml(f.folder)}
-          </label>
-          <span class="muted">${f.count} files · ${f.size_human} (${f.uploaded_count} done)</span>
-        </div>
-      `).join("");
-
-      fBox.querySelectorAll("input[data-folder-toggle]").forEach(cb => {
-        cb.addEventListener("change", () => toggleFolder(cb.dataset.folderToggle, cb.checked));
-      });
-
-      fileBox.innerHTML = "<strong>Files</strong>" + files.map(f => `
-        <div class="item-row">
-          <label>
-            <input type="checkbox" class="file-cb" data-folder="${escapeHtml(f.folder)}" data-rel="${escapeHtml(f.rel_path)}" ${f.uploaded ? "" : "checked"} />
-            ${escapeHtml(f.rel_posix)} ${f.uploaded ? '<span class="muted">(uploaded)</span>' : ""}
-          </label>
-          <span class="muted">${f.size_human}</span>
-        </div>
-      `).join("");
-    }
-
-    function toggleFolder(folder, checked) {
-      document.querySelectorAll(".file-cb").forEach(cb => {
-        if (cb.dataset.folder === folder) cb.checked = checked;
-      });
-    }
-
-    function selectAllFiles(checked) {
-      document.querySelectorAll(".file-cb").forEach(cb => { cb.checked = checked; });
-    }
-
+    function toggleFolder(f, c) { document.querySelectorAll(".fc").forEach(cb => { if (cb.dataset.folder===f) cb.checked=c; }); }
+    function selectAllFiles(c) { document.querySelectorAll(".fc").forEach(cb => cb.checked=c); }
     async function startUpload() {
-      const selected = Array.from(document.querySelectorAll(".file-cb:checked")).map(cb => cb.dataset.rel);
-      const msg = document.getElementById("browseMsg");
-      msg.textContent = "";
+      const sel = Array.from(document.querySelectorAll(".fc:checked")).map(cb=>cb.dataset.rel);
+      const msg = document.getElementById("browseMsg"); msg.textContent = "";
       try {
-        await api("/api/upload/start", "POST", {
-          source: document.getElementById("sourcePath").value,
-          selected_files: scannedFiles.length ? selected : null,
-          target: document.getElementById("targetCustom").value.trim() || "me",
-          compress: document.getElementById("compressMedia").checked,
-          premium: document.getElementById("premiumMode").checked,
-          split_large: document.getElementById("splitLarge").checked,
-          delay: parseFloat(document.getElementById("delayInput").value) || 1.5
-        });
-        pollStatus();
-      } catch (e) {
-        msg.textContent = e.message;
-      }
+        await api("/api/upload/start","POST",{source:document.getElementById("sourcePath").value,selected_files:scannedFiles.length?sel:null,target:document.getElementById("targetCustom").value.trim()||"me",compress:document.getElementById("compressMedia").checked,premium:document.getElementById("premiumMode").checked,split_large:document.getElementById("splitLarge").checked,delay:parseFloat(document.getElementById("delayInput").value)||1.5});
+      } catch (e) { msg.textContent = e.message; }
     }
-
-    async function stopUpload() {
-      await api("/api/upload/stop", "POST");
-    }
-
-    async function pollStatus() {
+    async function stopUpload() { await api("/api/upload/stop","POST"); }
+    async function poll() {
       try {
         const s = await api("/api/upload/status");
         document.getElementById("startBtn").disabled = s.running;
         document.getElementById("stopBtn").disabled = !s.running;
         document.getElementById("statusText").textContent = s.status_message;
-
         const done = s.completed_files + s.skipped_files;
-        const overallPct = s.total_files ? Math.round((done / s.total_files) * 100) : 0;
-        document.getElementById("overallLabel").textContent =
-          `${s.completed_files} uploaded, ${s.skipped_files} skipped / ${s.total_files}`;
-        document.getElementById("overallBar").style.width = `${overallPct}%`;
-
-        document.getElementById("currentFileLabel").textContent =
-          s.current_file ? `Current: ${s.current_file}` : "Current file: —";
-        document.getElementById("currentPctLabel").textContent = `${s.current_progress_pct}%`;
-        document.getElementById("currentBar").style.width = `${s.current_progress_pct}%`;
-
-        if (s.logs.length) {
-          const box = document.getElementById("logsBox");
-          box.textContent = s.logs.join("\n");
-          box.scrollTop = box.scrollHeight;
-        }
+        const pct = s.total_files ? Math.round((done/s.total_files)*100) : 0;
+        document.getElementById("overallLabel").textContent = `${s.completed_files} done, ${s.skipped_files} skipped / ${s.total_files}`;
+        document.getElementById("overallBar").style.width = pct+"%";
+        document.getElementById("currentFileLabel").textContent = s.current_file ? `Current: ${s.current_file}` : "Current: —";
+        document.getElementById("currentPctLabel").textContent = s.current_progress_pct+"%";
+        document.getElementById("currentBar").style.width = s.current_progress_pct+"%";
+        if (s.logs.length) { const b=document.getElementById("logsBox"); b.textContent=s.logs.join("\n"); b.scrollTop=b.scrollHeight; }
       } catch {}
     }
-
     checkAuth();
-    setInterval(pollStatus, 1000);
+    setInterval(poll, 1000);
   </script>
 </body>
 </html>
