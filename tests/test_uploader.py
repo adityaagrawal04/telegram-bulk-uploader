@@ -195,5 +195,30 @@ class TestWebApp(unittest.TestCase):
                 self.assertGreater(os.path.getsize(chunk), 0)
 
 
+class TestFastTelethon(unittest.TestCase):
+    def test_make_state_key_uniqueness(self):
+        k1 = uploader.make_state_key("me", "folder/file.mp4", 1000, 1700000000)
+        k2 = uploader.make_state_key("-100123", "folder/file.mp4", 1000, 1700000000)
+        k3 = uploader.make_state_key("me", "folder/file.mp4", 1001, 1700000000)
+        self.assertNotEqual(k1, k2)
+        self.assertNotEqual(k1, k3)
+        self.assertTrue(k1.startswith("me::folder/file.mp4"))
+
+    def test_cli_new_flags(self):
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "uploader.py",
+                "/data",
+                "--delete-on-success",
+                "--no-thumb",
+            ],
+        ):
+            args = uploader.parse_args()
+            self.assertTrue(args.delete_on_success)
+            self.assertTrue(args.no_thumb)
+
+
 if __name__ == "__main__":
     unittest.main()

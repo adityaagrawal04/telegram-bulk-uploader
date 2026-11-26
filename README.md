@@ -143,6 +143,8 @@ python uploader.py "/path/to/folder" --folders Vacation2025 "Family/Trip" --excl
 | `--ext` | Space-separated list of file extensions to include (e.g. `.jpg .mp4`) | All files |
 | `--delay` | Seconds to wait between consecutive uploads | `1.5` |
 | `--split-large` | Losslessly split oversized video files into chunks via FFmpeg | `False` |
+| `--delete-on-success` | Delete local file after successful upload to free up disk space | `False` |
+| `--no-thumb` | Disable automatic FFmpeg thumbnail generation for videos | `False` |
 | `-i`, `--select` | Interactively choose which folders and files to upload | `False` |
 | `--folders` | Only upload from matching subfolders (path or folder name) | All folders |
 | `--exclude-folders` | Skip matching subfolders (path or folder name) | None |
