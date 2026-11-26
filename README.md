@@ -15,13 +15,15 @@ A **user-friendly Web Dashboard + CLI tool** built on [Telethon](https://github.
 
 ---
 
-## Why Use This?
+## The Problem vs. The Fix
 
-- **No 2GB Bulk-Archive Limit Trap:** Files are uploaded **one by one** from your folders rather than zipped into one giant file—so a 500GB folder never hits Telegram's 2GB per-file cap as a whole.
-- **Original Quality Archiving:** Sends files as uncompressed documents (`force_document=True`) by default to preserve 4K video bitrates, RAW photos, and metadata.
-- **Colorful Web Dashboard + Background Queue:** Log in with your Telegram OTP/2FA in the browser, browse and check exact folders/files, pick Saved Messages or any Private Channel from a dropdown, and let uploads run in the background with live progress bars and logs.
-- **Lossless FFmpeg Video Splitting (`--split-large`):** Individual videos over 2GB (or 4GB with `--premium`) are automatically split into lossless chunks (`-c copy`) before uploading, then cleaned up.
-- **Auto-Resume & Flood Protection:** Tracks completed files in `uploaded_state.json` and automatically pauses on Telegram `FloodWaitError` cooldowns.
+| The Pain | How This App Solves It |
+| :--- | :--- |
+| 💥 **Hitting the 2GB Limit** | Uploads every photo, video, and file **one by one**—so a 500GB folder never fails as a single giant archive. |
+| ✂️ **4K Videos Over 2GB/4GB** | **FFmpeg Auto-Split** slices oversized videos losslessly (`-c copy`) into Telegram-safe parts and cleans up after. |
+| 📉 **Quality Loss & Compression** | Sends files as **uncompressed documents** by default—zero bitrate drop, full RAW/EXIF metadata preserved. |
+| 📶 **Wi-Fi Drops & Rate Limits** | **Auto-Resume** (`uploaded_state.json`) skips finished files and waits out `FloodWaitError` cooldowns automatically. |
+| 🖥️ **No Ugly Terminal Setup** | Launch a **sleek Web Dashboard** with 1 click (`start.bat` / `start.sh`), sign in via OTP/2FA, pick folders, and upload in the background. |
 
 ---
 
