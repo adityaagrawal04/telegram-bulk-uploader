@@ -15,18 +15,36 @@
   🚀 The Fastest Telegram Uploader on the Internet.
 </h3>
 
-<h4 align="center">
-  ✨ Turn Telegram into your private, high-capacity, zero-compression cloud vault at line-saturating speeds.
-</h4>
-
 <p align="center">
-  Tired of monthly cloud storage subscriptions, arbitrary size caps, and Telegram compressing your crisp 4K footage into blurry pixels?<br>
-  <b>Telegram Bulk Uploader</b> is the <b>fastest Telegram uploader on the internet</b> — engineered with a <b>16-Stream Turbo Highway</b> that shatters default client bottlenecks, an <b>Arc &amp; Okala-inspired Glass Dashboard</b>, and automatic FFmpeg lossless splitting for 100GB–500GB+ archives.
+  <b>Turn Telegram into your private, high-capacity, zero-compression cloud vault at line-saturating speeds.</b><br>
+  Engineered with a 16-Stream Turbo MTProto engine, an Arc &amp; Okala-inspired Glass Dashboard, lossless FFmpeg splitting, and automated rate-limit safeguards.
 </p>
 
 <p align="center">
   <img src="assets/demo.gif" alt="Telegram Bulk Uploader Demo Walkthrough" width="760" style="border-radius:18px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);" />
 </p>
+
+---
+
+## ⚡ Quick Start (Ready in 30 Seconds)
+
+### Option A: Install from PyPI (Easiest)
+```bash
+pip install telegram-bulk-uploader
+telegram-bulk-ui
+```
+*To use the command-line interface directly:*
+```bash
+telegram-bulk-uploader --target me "C:\path\to\your\folder" --delay 3.0
+```
+
+### Option B: Clone & Launch via 1-Click Scripts
+```bash
+git clone https://github.com/adityaagrawal04/telegram-bulk-uploader.git
+cd telegram-bulk-uploader
+```
+- **Windows:** Double-click `start.bat` (or run `.\start.bat` in PowerShell)
+- **macOS / Linux:** `chmod +x start.sh && ./start.sh`
 
 ---
 
@@ -81,9 +99,9 @@ flowchart LR
 
 ---
 
-## 🚀 Quick Start
+## 📦 Step-by-Step Installation & Detailed Setup
 
-### Option A: Install from PyPI (Easiest)
+### Option A: Install from PyPI (Recommended)
 ```bash
 pip install telegram-bulk-uploader
 telegram-bulk-ui
@@ -244,6 +262,27 @@ Telegram Bulk Uploader is built with defensive rate-limiting and anti-flood safe
   Every completed file is saved to `uploaded_state.json`. Re-running (or clicking Start again) skips already-uploaded files and resumes where you left off.
 - **Are my credentials safe?**
   Yes. `.env` and `*.session` files stay strictly on your local machine and are excluded from Git in [.gitignore](.gitignore).
+
+---
+
+## 💖 Support & Star
+
+If **Telegram Bulk Uploader** helped you back up your files, saved you storage fees, or improved your workflow, please consider giving this repository a ⭐ **Star**! It takes just one second, helps more people discover the project, and inspires further open-source development.
+
+<p align="center">
+  <a href="https://github.com/adityaagrawal04/telegram-bulk-uploader">
+    <img src="https://img.shields.io/github/stars/adityaagrawal04/telegram-bulk-uploader?style=for-the-badge&logo=github&color=ffb86c" alt="Star on GitHub" />
+  </a>
+</p>
+
+---
+
+## 🤝 Contributing
+
+Contributions, bug reports, and feature proposals are warmly welcome!
+- Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started with local development.
+- Found a bug? Open an issue using our [Bug Report Template](.github/ISSUE_TEMPLATE/bug_report.md).
+- Have an idea? Submit a [Feature Request](.github/ISSUE_TEMPLATE/feature_request.md).
 
 ---
 
