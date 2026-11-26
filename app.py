@@ -115,6 +115,28 @@ async def index():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
+def _open_folder_dialog_native() -> str:
+    """Prompt the operating system native folder picker dialog using Tkinter."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected_path = filedialog.askdirectory(title="Select Folder to Upload")
+        root.destroy()
+        return selected_path or ""
+    except Exception as e:
+        return ""
+
+
+@app.post("/api/choose-folder")
+async def choose_folder():
+    """Trigger native OS folder explorer dialog on host machine."""
+    path = await asyncio.to_thread(_open_folder_dialog_native)
+    return {"path": path}
+
+
 @app.get("/api/auth/status")
 async def auth_status():
     api_id = os.getenv("API_ID", "")
