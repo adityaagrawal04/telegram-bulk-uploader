@@ -186,7 +186,14 @@ If you've searched for a **Telegram uploader bot**, **Telegram file upload bot**
 
 Is it safe to use? **Yes, 100%.** Telegram Bulk Uploader is built with strict compliance guards to protect your account from rate-limiting, temporary flags, and bans:
 
-* ⏱️ **Mandatory Inter-File Throttling:** Every file upload is followed by a deliberate delay (default `1.5s`, customizable in UI and CLI) preventing algorithmic flood detection.
+> [!IMPORTANT]
+> **Anti-Ban Protection for Massive Archives (6,000+ Files):**
+> When uploading massive queues (e.g. 6,000+ wedding or family photo archives), rapid-fire messaging can trigger Telegram's automated spam heuristics. We've hardened the safety engine:
+> * **Default Upload Delay Increased to `3.0s`:** Default delay across the Web UI and CLI is calibrated to `3.0s` (ensuring ~20 messages/minute, strictly within Telegram's safe threshold).
+> * **Automatic Batch Cooldown:** Every 20 files, the engine automatically takes an **8-second breather** to mimic natural human usage.
+> * **Intelligent Document Fallback:** If Telegram ever rejects a high-res photo with *"exceeds 10MB"*, the engine instantly catches it and seamlessly retries as an uncompressed document without crashing your queue.
+
+* ⏱️ **Mandatory Inter-File Throttling:** Every file upload is followed by a deliberate delay (default `3.0s`, customizable in UI and CLI) preventing algorithmic flood detection.
 * 🛡️ **Strict `FloodWaitError` Backoff:** If Telegram ever signals a rate limit, the engine halts immediately and sleeps for the exact duration requested by Telegram plus a safety grace margin (`seconds + 2s`). It never hammers Telegram with rejected requests.
 * 🔒 **Conservative Connection Pooling:** Concurrent MTProto sockets are capped at safe thresholds (maximum 8 connections, well below Telegram's 20-connection DC ceiling).
 * 🏠 **Session Key Reuse:** Connections to your primary Data Center reuse your authenticated session `AuthKey` directly, avoiding suspicious repetitive auth exports.
@@ -203,7 +210,7 @@ Is it safe to use? **Yes, 100%.** Telegram Bulk Uploader is built with strict co
 - **How do I find a Private Channel's numeric ID?**
   Log into the Web UI and select the channel directly from the **Target Chat / Private Channel** dropdown—no manual ID lookup needed!
 - **Will using this ban my Telegram account?**
-  No. As long as you maintain the default upload delay (`--delay 1.5`) and don't share copyright-infringing content on public channels, your account operates within Telegram's standard client terms with full FloodWait backoff protection.
+  No. As long as you maintain the default upload delay (`--delay 3.0`) and don't share copyright-infringing content on public channels, your account operates within Telegram's standard client terms with full FloodWait backoff protection.
 - **What happens if my internet disconnects mid-upload?**
   Every completed file is saved to `uploaded_state.json`. Re-running (or clicking Start again) skips already-uploaded files and resumes where you left off.
 - **Are my credentials safe?**

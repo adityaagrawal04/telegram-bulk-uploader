@@ -175,10 +175,12 @@ async def fast_upload_file(client, file_path: str, progress_callback=None, max_w
     file_id = helpers.generate_random_long()
 
     # Optimal connection pool size based on file size (avoid socket overhead for tiny files)
-    if file_size > 100 * 1024 * 1024:
-        conns = min(max_workers or 8, 8)
+    if file_size > 500 * 1024 * 1024:
+        conns = min(max_workers or 16, 16)
+    elif file_size > 100 * 1024 * 1024:
+        conns = min(max_workers or 12, 12)
     elif file_size > 10 * 1024 * 1024:
-        conns = min(max_workers or 4, 4)
+        conns = min(max_workers or 6, 6)
     else:
         conns = min(max_workers or 2, 2)
     conns = max(1, min(conns, part_count))
@@ -187,7 +189,8 @@ async def fast_upload_file(client, file_path: str, progress_callback=None, max_w
     try:
         await transferrer.init_upload(conns, file_id, part_count, is_big)
     except Exception as e:
-        # Fallback if raw connection creation fails
+        import logging
+        logging.getLogger("fast_telethon").warning(f"Parallel MTProto init fallback to sequential: {e}")
         transferrer = None
 
     uploaded_bytes = 0
