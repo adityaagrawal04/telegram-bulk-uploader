@@ -436,7 +436,16 @@ async def _run_background_upload(req: UploadStartRequest):
         limit_mb = 4000 if req.premium else 2000
         force_document = not req.compress
 
+        session_upload_count = 0
         for file_path in all_files:
+            if not state.running:
+                break
+
+            # Anti-flood shield: Every 20 files, pause for 8 seconds to prevent algorithmic rate-limiting
+            if session_upload_count > 0 and session_upload_count % 20 == 0:
+                state.log("[ANTI-FLOOD SHIELD] Pausing 8s after 20 files to maintain safe cadence and protect account...")
+                await asyncio.sleep(8)
+
             rel_path = os.path.relpath(file_path, source)
             st = os.stat(file_path)
             file_size = st.st_size
@@ -513,6 +522,7 @@ async def _run_background_upload(req: UploadStartRequest):
                 uploaded_files.add(uploader.make_state_key(target_str, rel_path, file_size, file_mtime))
                 uploader.save_state(uploaded_files)
                 state.completed_files += 1
+                session_upload_count += 1
                 state.log(f"[UPLOADED SPLIT] {rel_path}")
                 continue
 
@@ -524,6 +534,7 @@ async def _run_background_upload(req: UploadStartRequest):
             uploaded_files.add(uploader.make_state_key(target_str, rel_path, file_size, file_mtime))
             uploader.save_state(uploaded_files)
             state.completed_files += 1
+            session_upload_count += 1
             state.log(f"[UPLOADED] {rel_path}")
 
         state.status_message = "Upload queue complete!"

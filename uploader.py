@@ -596,7 +596,12 @@ async def main():
         print(f"Already uploaded:     {len(all_files) - len(remaining_files)}")
         print(f"Remaining to upload:  {len(remaining_files)}\n")
 
+        session_uploaded_count = 0
         for index, file_path in enumerate(all_files, start=1):
+            if session_uploaded_count > 0 and session_uploaded_count % 20 == 0:
+                print("\n[ANTI-FLOOD SHIELD] Pausing 8s after 20 files to maintain safe cadence and protect account...")
+                await asyncio.sleep(8)
+
             rel_path = os.path.relpath(file_path, args.source)
             st = os.stat(file_path)
             file_size = st.st_size
@@ -670,6 +675,7 @@ async def main():
 
                 uploaded_files.add(make_state_key(target_str, rel_path, file_size, file_mtime))
                 save_state(uploaded_files)
+                session_uploaded_count += 1
                 continue
 
             caption = f"📁 {folder_name}\n📄 {file_name}"
@@ -689,6 +695,7 @@ async def main():
 
             uploaded_files.add(make_state_key(target_str, rel_path, file_size, file_mtime))
             save_state(uploaded_files)
+            session_uploaded_count += 1
 
         print("\nUpload queue complete!")
     finally:
