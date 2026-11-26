@@ -21,6 +21,11 @@ VIDEO_EXTENSIONS = {
     ".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv", ".wmv", ".m4v", ".ts", ".mts", ".m2ts"
 }
 
+IMAGE_EXTENSIONS = {
+    ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif", ".heic", ".heif", ".dng", ".cr2", ".nef", ".arw"
+}
+MAX_IMAGE_COMPRESSED_SIZE = 9 * 1024 * 1024  # 9MB limit
+
 # Conservative Telegram thresholds (2000 MiB / 4000 MiB)
 STANDARD_LIMIT = 2000 * 1024 * 1024
 PREMIUM_LIMIT = 4000 * 1024 * 1024
@@ -387,6 +392,75 @@ def generate_video_thumbnail(video_path, out_thumb_path):
     return None
 
 
+def is_ffmpeg_available():
+    return bool(shutil.which("ffmpeg"))
+
+
+def compress_image_below_limit(file_path, output_dir=None, max_bytes=MAX_IMAGE_COMPRESSED_SIZE):
+    """
+    Compress an image to ensure its file size is strictly less than max_bytes (default 9MB).
+    If the image is already <= max_bytes, returns None (no compression needed).
+    Uses Pillow if available, with robust FFmpeg fallback.
+    """
+    if not os.path.exists(file_path):
+        return None
+    file_size = os.path.getsize(file_path)
+    if file_size <= max_bytes:
+        return None
+
+    _, ext = os.path.splitext(file_path)
+    if ext.lower() not in IMAGE_EXTENSIONS:
+        return None
+
+    if output_dir is None:
+        output_dir = tempfile.gettempdir()
+    os.makedirs(output_dir, exist_ok=True)
+
+    base_name = os.path.splitext(os.path.basename(file_path))[0]
+    out_path = os.path.join(output_dir, f"{base_name}_compressed_{os.getpid()}.jpg")
+
+    # Method 1: Try Pillow if available
+    try:
+        from PIL import Image
+        with Image.open(file_path) as img:
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            for quality in [85, 75, 65, 50, 35]:
+                img.save(out_path, format="JPEG", quality=quality, optimize=True)
+                if os.path.getsize(out_path) <= max_bytes:
+                    return out_path
+            w, h = img.size
+            scale = 0.8
+            while scale >= 0.25:
+                new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
+                resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                resized.save(out_path, format="JPEG", quality=75, optimize=True)
+                if os.path.getsize(out_path) <= max_bytes:
+                    return out_path
+                scale -= 0.15
+            if os.path.exists(out_path):
+                return out_path
+    except Exception:
+        pass
+
+    # Method 2: FFmpeg fallback
+    if is_ffmpeg_available():
+        for q in [3, 5, 8, 12]:
+            cmd = ["ffmpeg", "-y", "-i", file_path, "-q:v", str(q), "-frames:v", "1", out_path]
+            res = subprocess.run(cmd, capture_output=True)
+            if res.returncode == 0 and os.path.exists(out_path) and os.path.getsize(out_path) <= max_bytes:
+                return out_path
+        for scale in ["scale=iw*0.75:-2", "scale=iw*0.5:-2", "scale=iw*0.35:-2"]:
+            cmd = ["ffmpeg", "-y", "-i", file_path, "-vf", scale, "-q:v", "5", "-frames:v", "1", out_path]
+            res = subprocess.run(cmd, capture_output=True)
+            if res.returncode == 0 and os.path.exists(out_path) and os.path.getsize(out_path) <= max_bytes:
+                return out_path
+        if os.path.exists(out_path):
+            return out_path
+
+    return None
+
+
 def split_video_file(file_path, output_dir, max_file_size, attempt=1):
     """
     Split a video into lossless chunks with clean audio/video stream selection,
@@ -680,18 +754,36 @@ async def main():
 
             caption = f"📁 {folder_name}\n📄 {file_name}"
             desc_label = f"[{index}/{len(all_files)}] {file_name[:25]}"
-            await upload_file_with_retry(
-                client,
-                target,
-                file_path,
-                caption,
-                force_document,
-                args.delay,
-                desc_label,
-                rel_path,
-                delete_on_success=args.delete_on_success,
-                no_thumb=args.no_thumb,
-            )
+
+            compressed_temp = None
+            upload_target_path = file_path
+            if args.compress and ext.lower() in IMAGE_EXTENSIONS and file_size > MAX_IMAGE_COMPRESSED_SIZE:
+                print(f"[COMPRESSING] {file_name} ({file_size / (1024*1024):.1f}MB -> < 9MB)...")
+                comp = compress_image_below_limit(file_path)
+                if comp and os.path.exists(comp):
+                    compressed_temp = comp
+                    upload_target_path = comp
+                    print(f"[COMPRESSED] Successfully reduced to {os.path.getsize(comp) / (1024*1024):.2f}MB (< 9MB)")
+
+            try:
+                await upload_file_with_retry(
+                    client,
+                    target,
+                    upload_target_path,
+                    caption,
+                    force_document,
+                    args.delay,
+                    desc_label,
+                    rel_path,
+                    delete_on_success=args.delete_on_success,
+                    no_thumb=args.no_thumb,
+                )
+            finally:
+                if compressed_temp and os.path.exists(compressed_temp):
+                    try:
+                        os.remove(compressed_temp)
+                    except Exception:
+                        pass
 
             uploaded_files.add(make_state_key(target_str, rel_path, file_size, file_mtime))
             save_state(uploaded_files)

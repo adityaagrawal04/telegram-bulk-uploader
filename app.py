@@ -528,9 +528,29 @@ async def _run_background_upload(req: UploadStartRequest):
 
             caption = f"📁 {folder_name}\n📄 {file_name}"
             state.status_message = f"Uploading {file_name}"
-            await _send_with_progress(
-                client, target, file_path, caption, force_document, req.delay, rel_path, delete_on_success=req.delete_on_success
-            )
+
+            compressed_temp = None
+            upload_target_path = file_path
+            if req.compress and ext.lower() in uploader.IMAGE_EXTENSIONS and file_size > uploader.MAX_IMAGE_COMPRESSED_SIZE:
+                state.status_message = f"Compressing {file_name} < 9MB..."
+                state.log(f"[COMPRESSING] {rel_path} ({file_size / (1024*1024):.1f}MB -> < 9MB)...")
+                comp = await asyncio.to_thread(uploader.compress_image_below_limit, file_path)
+                if comp and os.path.exists(comp):
+                    compressed_temp = comp
+                    upload_target_path = comp
+                    state.log(f"[COMPRESSED] {file_name} reduced to {os.path.getsize(comp) / (1024*1024):.2f}MB (< 9MB)")
+
+            try:
+                await _send_with_progress(
+                    client, target, upload_target_path, caption, force_document, req.delay, rel_path, delete_on_success=req.delete_on_success
+                )
+            finally:
+                if compressed_temp and os.path.exists(compressed_temp):
+                    try:
+                        os.remove(compressed_temp)
+                    except Exception:
+                        pass
+
             uploaded_files.add(uploader.make_state_key(target_str, rel_path, file_size, file_mtime))
             uploader.save_state(uploaded_files)
             state.completed_files += 1

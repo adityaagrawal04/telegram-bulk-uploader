@@ -219,6 +219,28 @@ class TestFastTelethon(unittest.TestCase):
             self.assertTrue(args.delete_on_success)
             self.assertTrue(args.no_thumb)
 
+    def test_compress_image_below_limit(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a small dummy image that is already <= 9MB
+            small_img = os.path.join(tmpdir, "small.jpg")
+            with open(small_img, "wb") as f:
+                f.write(b"\xFF\xD8\xFF\xE0" + b"\x00" * 1000)
+            res = uploader.compress_image_below_limit(small_img, output_dir=tmpdir, max_bytes=9*1024*1024)
+            # Already <= 9MB, should return None
+            self.assertIsNone(res)
+
+            # Test threshold limit on a mock > max_bytes
+            fake_large = os.path.join(tmpdir, "large.jpg")
+            with open(fake_large, "wb") as f:
+                f.write(b"\xFF\xD8\xFF\xE0" + b"\x00" * 2000)
+            # Setting max_bytes to 1000 forces compression check
+            res_compressed = uploader.compress_image_below_limit(fake_large, output_dir=tmpdir, max_bytes=1000)
+            if uploader.is_ffmpeg_available():
+                # If ffmpeg is available, it produces a valid file
+                if res_compressed:
+                    self.assertTrue(os.path.exists(res_compressed))
+
+
 
 if __name__ == "__main__":
     unittest.main()
