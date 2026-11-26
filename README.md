@@ -9,12 +9,16 @@
 </p>
 
 <h3 align="center">
-  ✨ Turn Telegram into your private, unlimited, zero-compression cloud vault.
+  🚀 The Fastest Telegram Uploader on the Internet.
 </h3>
+
+<h4 align="center">
+  ✨ Turn Telegram into your private, unlimited, zero-compression cloud vault at line-saturating speeds.
+</h4>
 
 <p align="center">
   Tired of monthly cloud storage subscriptions, arbitrary size caps, and Telegram compressing your crisp 4K footage into blurry pixels?<br>
-  <b>Telegram Bulk Uploader</b> is a high-speed, aesthetically tuned cloud archiver equipped with an <b>Arc &amp; Okala-inspired Glass Dashboard</b> and a <b>16-Stream Turbo Highway</b> that backs up 100GB–500GB+ libraries effortlessly.
+  <b>Telegram Bulk Uploader</b> is the <b>fastest Telegram uploader on the internet</b> — engineered with a <b>16-Stream Turbo Highway</b> that shatters default client bottlenecks, an <b>Arc &amp; Okala-inspired Glass Dashboard</b>, and automatic FFmpeg lossless splitting for 100GB–500GB+ archives.
 </p>
 
 <p align="center">
