@@ -7,12 +7,6 @@
 
 A **user-friendly Web Dashboard + CLI tool** built on [Telethon](https://github.com/LonamiWebs/Telethon) and [FastAPI](https://fastapi.tiangolo.com/) to recursively archive large local photo, video, and document libraries (100GB–500GB+) to Telegram **one by one** without compression.
 
-<p align="center">
-  <img src="assets/demo.gif" alt="Telegram Bulk Uploader Walkthrough" width="720" />
-</p>
-
-> 🎬 Prefer MP4? Download or watch [assets/demo.mp4](assets/demo.mp4).
-
 ---
 
 ## The Problem vs. The Fix
