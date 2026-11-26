@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/Telethon-1.36+-0088cc?style=for-the-badge&logo=telegram&logoColor=white" />
   <img src="https://img.shields.io/badge/FastAPI-Dashboard-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/Turbo_Engine-16x_Parallel-FF6B6B?style=for-the-badge&logo=speedtest&logoColor=white" />
-  <img src="https://img.shields.io/badge/Anti--Ban_Shield-Active_%26_Enforced-2ed573?style=for-the-badge&logo=shield" />
+  <img src="https://img.shields.io/badge/Rate--Limit_Shield-Active_%26_Enforced-2ed573?style=for-the-badge&logo=shield" />
   <img src="https://img.shields.io/badge/License-MIT-success?style=for-the-badge" />
 </p>
 
@@ -16,7 +16,7 @@
 </h3>
 
 <h4 align="center">
-  ✨ Turn Telegram into your private, unlimited, zero-compression cloud vault at line-saturating speeds.
+  ✨ Turn Telegram into your private, high-capacity, zero-compression cloud vault at line-saturating speeds.
 </h4>
 
 <p align="center">
@@ -40,7 +40,7 @@
 | **The "Wi-Fi Dropped at 98%" Rage**<br><sub>One connection drop and default scripts restart your entire 50GB queue from scratch.</sub> | **Bulletproof Resume Engine**<br><sub>Local ledger (`uploaded_state.json`) remembers every file. If internet drops, it seamlessly resumes where it left off.</sub> |
 | **Ugly Terminal Screens & Complex Flags**<br><sub>Typing endless console arguments and modifying source code.</sub> | **Arc &amp; Okala-Inspired Glass Dashboard**<br><sub>Fluid dark aesthetic with native 1-click folder browsing, OTP/2FA sign-in, live MB/s telemetry, and background upload monitor.</sub> |
 | **Painfully Slow Upload Speeds**<br><sub>Stock single-thread uploads crawling at 1–2 MB/s on fast connections.</sub> | **16-Stream Turbo Highway**<br><sub>Custom multipart connection pool with C-accelerated `cryptg` encryption, pushing your bandwidth to its real limits.</sub> |
-| **Account Ban & Spam Flags**<br><sub>Uploading 6,000+ files rapid-fire triggering Telegram's automated spam filters or `@SpamBot`.</sub> | **Military-Grade Anti-Ban Shield**<br><sub>Enforced 3.0s cadence + randomized human jitter, multi-tiered breathers (10s at 25 files, 35s at 100 files), dynamic FloodWait backoff, and 100% spam-report-free Saved Messages isolation.</sub> |
+| **Account Rate-Limit Flags**<br><sub>Uploading 6,000+ files rapid-fire triggering Telegram's automated spam heuristics.</sub> | **Automated Rate-Limit & Flood Shield**<br><sub>Enforced 3.0s cadence + randomized human jitter, tiered cooldowns (10s at 25 files, 35s at 100 files), dynamic FloodWait backoff, and Saved Messages isolation to significantly minimize account restrictions.</sub> |
 
 ---
 
@@ -61,7 +61,7 @@ How **Telegram Bulk Uploader** compares against the most popular alternatives on
 | **Delete Local on Success** | ✅ **Toggle in UI or `--delete-on-success`** | ✅ Yes | ❌ None |
 | **Folder Selection & Filtering** | ✅ **Native File Explorer + Glob filters** | ⚠️ Basic file arguments | ❌ Send files one-by-one |
 | **Private Channels / Saved Messages**| ✅ **Dropdown list auto-populated** | ⚠️ Manual ID required | ⚠️ Bot chat only |
-| **Anti-Ban Protection (6,000+ files)** | ✅ **Human Jitter, Multi-Tier Cooldowns & Safe Scaling** | ❌ None (Triggers FloodWait / Ban) | ❌ None (Bot rate limited) |
+| **Rate-Limit & Anti-Flood Shield (6,000+ files)** | ✅ **Human Jitter, Multi-Tier Cooldowns & Safe Scaling** | ❌ None (High FloodWait risk) | ❌ None (Bot rate limited) |
 | **Docker & Docker Compose** | ✅ **Pre-built container with FFmpeg** | ✅ Yes | ⚠️ Manual Heroku procfile |
 
 ---
@@ -185,19 +185,23 @@ If you've searched for a **Telegram uploader bot**, **Telegram file upload bot**
 
 ---
 
-## 🛡️ Anti-Ban & Telegram Account Safety Architecture
+## 🛡️ Rate-Limit Safeguards & Telegram Account Safety Architecture
 
-Is it safe to use? **Yes, 100%.** Telegram Bulk Uploader is built with strict compliance guards to protect your account from rate-limiting, temporary flags, and bans:
+Telegram Bulk Uploader is built with defensive rate-limiting and anti-flood safeguards designed to minimize the risk of temporary account restrictions, FloodWaits, and spam flags:
+
+> [!WARNING]
+> **Telegram Platform Limits & Fair Use Notice:**
+> No third-party software can guarantee absolute immunity from account restrictions or bans. Telegram's terms of service, server-side rate limits, and automated anti-spam heuristics always apply. Storage is not "unlimited" — files are subject to Telegram's per-file upload caps (2GB for standard accounts, 4GB for Telegram Premium) and fair platform usage. Always use conservative delay settings (3.0s+), avoid broadcasting to public chats, and respect Telegram's rate boundaries.
 
 > [!IMPORTANT]
-> **Anti-Ban Protection for Massive Archives (6,000+ Files):**
+> **Defensive Architecture for Large Queues (6,000+ Files):**
 > When uploading massive queues (e.g. 6,000+ wedding or family photo archives), rapid-fire messaging can trigger Telegram's automated spam heuristics. We've hardened the safety engine:
-> * **Calibrated Upload Delay (`3.0s` default):** Enforces a safe ~18–20 messages/minute cadence, strictly within Telegram's safe threshold.
-> * **Randomized Human Jitter (+0.1s to +0.8s):** Adds dynamic non-uniform variance between consecutive file sends, breaking mechanical heartbeat patterns and preventing bot signature flags.
+> * **Calibrated Upload Delay (`3.0s` default):** Enforces a safe ~18–20 messages/minute cadence, staying well within Telegram's per-chat safe zone.
+> * **Randomized Human Jitter (+0.1s to +0.8s):** Adds dynamic non-uniform variance between consecutive file sends, reducing machine-like regularity that automated filters look for.
 > * **Multi-Tiered Automated Cooldowns:**
 >   - **Micro-Breather:** Automatic 10-second pause every 25 files.
->   - **Deep Breather:** Automatic 35-second pause every 100 files to simulate natural human usage.
-> * **Dynamic FloodWait Backoff:** Strictly obeys Telegram's rate-limit wait time plus a +5s safety margin (`seconds + 5s`), while automatically increasing session delay by +1.0s to let server limits recover.
+>   - **Deep Breather:** Automatic 35-second pause every 100 files to simulate natural usage.
+> * **Dynamic FloodWait Backoff:** Strictly obeys Telegram's requested rate-limit sleep time plus a +5s safety margin (`seconds + 5s`), while automatically increasing session delay by +1.0s to let server limits recover.
 > * **Safe Photo Dimension Auto-Scaling & Document Fallback:** DSLR photos (>2560px) are automatically scaled and compressed using Pillow to adhere to Telegram's photo rules. If Telegram ever rejects a media item, the engine instantly falls back to sending it as an uncompressed document without crashing or stalling your queue.
 
 * ⏱️ **Mandatory Inter-File Throttling:** Every file upload is followed by a deliberate delay (default `3.0s`, customizable in UI and CLI) preventing algorithmic flood detection.
@@ -206,14 +210,14 @@ Is it safe to use? **Yes, 100%.** Telegram Bulk Uploader is built with strict co
 * 🏠 **Session Key Reuse:** Connections to your primary Data Center reuse your authenticated session `AuthKey` directly, avoiding suspicious repetitive auth exports.
 * 📁 **Zero Third-Party Relays:** All data streams point-to-point directly from your machine to official Telegram Data Centers. No intermediate proxies, tokens, or servers ever touch your files.
 
-### 📋 7 Steps Taken by the Engine to Eliminate Ban & Suspension Risks
+### 📋 7 Safeguards Implemented to Minimize Rate-Limit & Restriction Risks
 
-1. **Destination Isolation (Zero User Spam Reports):**
-   Personal backups target **Saved Messages (`me`)** or Private Channels. Since no external users receive unsolicited messages, `@SpamBot` user reports are completely eliminated.
+1. **Destination Isolation (Minimizes User Spam Reports):**
+   Personal backups target **Saved Messages (`me`)** or Private Channels. Since no external users receive unsolicited messages, `@SpamBot` user reports are prevented.
 2. **Calibrated Rate Cadence (3.0s Delay):**
    Enforces a steady average of ~18–20 messages/minute, staying strictly under Telegram's per-chat threshold (~20–30 msgs/min).
 3. **Randomized Human Timing Jitter (+0.1s to +0.8s):**
-   Every inter-file pause injects non-uniform variance (`delay + uniform(0.1, 0.8)`). This eliminates the mechanical "heartbeat" pattern that machine-learning spam detectors use to flag unattended scripts.
+   Every inter-file pause injects non-uniform variance (`delay + uniform(0.1, 0.8)`). This avoids mechanical heartbeat patterns that spam heuristics flag.
 4. **Multi-Tiered Automated Cooldown Breathers:**
    - **Micro-Breather:** Automatic 10-second pause every 25 files.
    - **Deep Breather:** Automatic 35-second pause every 100 files, mimicking natural human rest periods and allowing server-side message buffers to reset.
@@ -226,7 +230,7 @@ Is it safe to use? **Yes, 100%.** Telegram Bulk Uploader is built with strict co
 
 > [!TIP]
 > **Use "Saved Messages" (`me`) for personal vaults.**
-> Uploading to **Saved Messages (`me`)** is private self-chat. Because no other users see or interact with the messages, it cannot be reported for spam, and Telegram's anti-abuse algorithms treat it as legitimate personal cloud backup. If using a channel, always keep it **Private** (never Public).
+> Uploading to **Saved Messages (`me`)** is private self-chat. Because no other users see or interact with the messages, it cannot be reported for spam, and Telegram's anti-abuse algorithms treat it as personal cloud storage. If using a channel, always keep it **Private** (never Public).
 
 ---
 
@@ -234,8 +238,8 @@ Is it safe to use? **Yes, 100%.** Telegram Bulk Uploader is built with strict co
 
 - **How do I find a Private Channel's numeric ID?**
   Log into the Web UI and select the channel directly from the **Target Chat / Private Channel** dropdown—no manual ID lookup needed!
-- **Will using this ban my Telegram account?**
-  No. As long as you maintain the default upload delay (`--delay 3.0`) and don't share copyright-infringing content on public channels, your account operates within Telegram's standard client terms with full FloodWait backoff protection.
+- **Could my Telegram account be rate-limited or restricted?**
+  While this tool implements aggressive rate-limiting protections (3.0s+ delays, jitter, tiered breathers, and FloodWait backoff), Telegram's automated spam algorithms and fair usage limits ultimately govern all accounts. To minimize risk: keep the default delay at 3.0s or higher, upload personal backups to Saved Messages (`me`) or private channels, and never upload unsolicited content to public chats.
 - **What happens if my internet disconnects mid-upload?**
   Every completed file is saved to `uploaded_state.json`. Re-running (or clicking Start again) skips already-uploaded files and resumes where you left off.
 - **Are my credentials safe?**
