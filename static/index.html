@@ -327,10 +327,28 @@
       background: rgba(255, 118, 117, 0.15);
       border: 1px solid rgba(255, 118, 117, 0.3);
       color: #ff7675;
+      cursor: pointer;
     }
 
     .btn-danger-arc:hover:not(:disabled) {
-      background: rgba(255, 118, 117, 0.25);
+      background: rgba(255, 118, 117, 0.35);
+      border-color: #ff7675;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(255, 118, 117, 0.3);
+    }
+
+    /* Active Stop Button glow when upload is in progress */
+    .btn-danger-arc.active-cancel {
+      background: linear-gradient(135deg, #e11d48, #fb7185);
+      border-color: #fda4af;
+      color: #ffffff;
+      box-shadow: 0 0 25px rgba(225, 29, 72, 0.55);
+      animation: pulse-cancel 1.5s infinite;
+    }
+
+    @keyframes pulse-cancel {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(225, 29, 72, 0.5); }
+      50% { transform: scale(1.02); box-shadow: 0 0 32px rgba(225, 29, 72, 0.8); }
     }
 
     /* Arc Widget Toggles */
@@ -687,7 +705,10 @@
         </button>
         <button id="stopBtn" class="btn-danger-arc" onclick="stopUpload()" disabled>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
-          Stop Upload
+          <span id="stopBtnText">Cancel Upload</span>
+        </button>
+        <button id="resetQueueBtn" class="btn-subtle" onclick="resetQueueProgress()" title="Clear queue numbers and progress bars" style="padding: 10px 14px;">
+          ↺ Reset View
         </button>
       </div>
 
@@ -894,13 +915,44 @@
       }catch(e){m.textContent=e.message;}
     }
 
-    async function stopUpload(){ await api("/api/upload/stop","POST"); }
+    async function stopUpload(){
+      const btn = document.getElementById("stopBtnText");
+      if (btn) btn.textContent = "Cancelling...";
+      try {
+        await api("/api/upload/stop","POST");
+      } catch (e) {
+        console.error("Stop error:", e);
+      }
+      setTimeout(poll, 400);
+    }
+
+    async function resetQueueProgress(){
+      try {
+        await api("/api/upload/stop", "POST");
+      } catch {}
+      document.getElementById("overallLabel").textContent = "0 / 0";
+      document.getElementById("overallBar").style.width = "0%";
+      document.getElementById("currentFileLabel").textContent = "Current: —";
+      document.getElementById("currentPctLabel").textContent = "0%";
+      document.getElementById("currentBar").style.width = "0%";
+      document.getElementById("statusText").textContent = "Idle";
+      const sp = document.getElementById("speedLabel"); if (sp) sp.textContent = "";
+      const eta = document.getElementById("etaLabel"); if (eta) eta.textContent = "";
+    }
 
     async function poll(){
       try{
         const s=await api("/api/upload/status");
-        document.getElementById("startBtn").disabled=s.running;
-        document.getElementById("stopBtn").disabled=!s.running;
+        const stopBtn = document.getElementById("stopBtn");
+        const stopText = document.getElementById("stopBtnText");
+        stopBtn.disabled = !s.running;
+        if (s.running) {
+          stopBtn.classList.add("active-cancel");
+          if (stopText) stopText.textContent = "Cancel Upload";
+        } else {
+          stopBtn.classList.remove("active-cancel");
+          if (stopText) stopText.textContent = "Cancel Upload";
+        }
         document.getElementById("statusText").textContent=s.status_message;
         const done=s.completed_files+s.skipped_files;
         const pct=s.total_files?Math.round((done/s.total_files)*100):0;
