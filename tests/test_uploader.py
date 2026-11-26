@@ -20,7 +20,7 @@ class TestUploaderCLI(unittest.TestCase):
         self.assertFalse(args.compress)
         self.assertFalse(args.premium)
         self.assertIsNone(args.ext)
-        self.assertEqual(args.delay, 1.5)
+        self.assertEqual(args.delay, 3.0)
         self.assertFalse(args.split_large)
 
     def test_parse_args_all_flags(self):

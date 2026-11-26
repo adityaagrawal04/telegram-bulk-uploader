@@ -64,8 +64,8 @@ def parse_args():
     parser.add_argument(
         "--delay",
         type=float,
-        default=1.5,
-        help="Delay in seconds between uploads to avoid rate limits (default: 1.5)",
+        default=3.0,
+        help="Delay in seconds between uploads to avoid rate limits (default: 3.0)",
     )
     parser.add_argument(
         "--split-large",
@@ -586,7 +586,12 @@ async def upload_file_with_retry(
             except errors.FloodWaitError as e:
                 print(f"\n[RATE LIMIT] Telegram requested a {e.seconds}s pause on send_file. Waiting...")
                 await asyncio.sleep(e.seconds + 5)
-            except (ConnectionError, asyncio.TimeoutError, OSError, errors.RPCError) as e:
+            except Exception as e:
+                err_msg = str(e).lower()
+                if not force_document and ("cannot be saved by telegram" in err_msg or "exceeds 10mb" in err_msg or "media_invalid" in err_msg):
+                    print(f"\n[AUTO-FALLBACK] Image exceeds Telegram's 10MB photo cap. Retrying as uncompressed document...")
+                    force_document = True
+                    continue
                 if attempt == max_retries - 1:
                     raise RuntimeError(f"Gave up sending file message for {rel_path}: {e}")
                 print(f"\n[NETWORK] Transient message delivery failure on {rel_path} ({e}). Retrying in 5s...")

@@ -86,7 +86,7 @@ class UploadStartRequest(BaseModel):
     premium: bool = False
     split_large: bool = False
     delete_on_success: bool = False
-    delay: float = 1.5
+    delay: float = 3.0
 
 
 def _save_env_credentials(api_id: int, api_hash: str, phone: str):
@@ -383,9 +383,15 @@ async def _send_with_progress(client, target, file_path, caption, force_document
         except errors.FloodWaitError as e:
             state.log(f"[RATE LIMIT] FloodWait {e.seconds}s on message send...")
             await asyncio.sleep(e.seconds + 5)
-        except (ConnectionError, asyncio.TimeoutError, OSError, errors.RPCError) as e:
+        except Exception as e:
+            err_msg = str(e).lower()
+            if not force_document and ("cannot be saved by telegram" in err_msg or "exceeds 10mb" in err_msg or "media_invalid" in err_msg):
+                state.log(f"[AUTO-FALLBACK] Image exceeds Telegram's 10MB photo cap. Retrying as uncompressed document...")
+                force_document = True
+                continue
             if attempt == max_retries - 1:
                 raise RuntimeError(f"Gave up sending message for {label}: {e}")
+            state.log(f"[NETWORK] Transient message delivery failure on {label} ({e}). Retrying in 5s...")
             await asyncio.sleep(5)
 
     if delete_on_success:
