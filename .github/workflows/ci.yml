@@ -1,4 +1,4 @@
-name: Tests & Lint
+name: Tests & CI
 
 on:
   push:
@@ -10,6 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
 
@@ -20,17 +21,28 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip'
 
-    - name: Install FFmpeg
+    - name: Install System Packages & FFmpeg
       run: |
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends \
+          ffmpeg \
+          build-essential \
+          libssl-dev \
+          python3-tk
 
-    - name: Install dependencies
+    - name: Install Python Dependencies
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
 
-    - name: Run test suite
+    - name: Verify Imports & Syntax
+      run: |
+        python -m py_compile uploader.py app.py fast_telethon.py
+
+    - name: Run Test Suite
+      env:
+        PYTHONPATH: .
       run: |
         python -m unittest discover -s tests -v
