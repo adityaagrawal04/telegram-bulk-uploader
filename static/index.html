@@ -928,8 +928,10 @@
 
     async function resetQueueProgress(){
       try {
-        await api("/api/upload/stop", "POST");
-      } catch {}
+        await api("/api/upload/reset", "POST");
+      } catch (e) {
+        console.error("Reset error:", e);
+      }
       document.getElementById("overallLabel").textContent = "0 / 0";
       document.getElementById("overallBar").style.width = "0%";
       document.getElementById("currentFileLabel").textContent = "Current: —";
@@ -938,6 +940,8 @@
       document.getElementById("statusText").textContent = "Idle";
       const sp = document.getElementById("speedLabel"); if (sp) sp.textContent = "";
       const eta = document.getElementById("etaLabel"); if (eta) eta.textContent = "";
+      const box = document.getElementById("logsBox");
+      if (box) box.textContent = "Queue reset. Select a directory and start fresh...";
     }
 
     async function poll(){

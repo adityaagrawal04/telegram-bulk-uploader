@@ -529,6 +529,25 @@ async def stop_upload():
     return {"stopped": True}
 
 
+@app.post("/api/upload/reset")
+async def reset_upload():
+    """Reset all queue statistics and clear active status on the server."""
+    if state.running and state.task:
+        state.task.cancel()
+    state.running = False
+    state.total_files = 0
+    state.completed_files = 0
+    state.skipped_files = 0
+    state.current_file = ""
+    state.current_bytes = 0
+    state.current_total_bytes = 0
+    state.speed_mbps = 0.0
+    state.eta_seconds = 0
+    state.status_message = "Idle"
+    state.logs.clear()
+    return {"reset": True}
+
+
 @app.get("/api/upload/status")
 async def upload_status():
     pct = 0.0
