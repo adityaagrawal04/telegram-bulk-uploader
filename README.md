@@ -173,6 +173,12 @@ python -m unittest discover -s tests -v
 
 ---
 
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=adityaagrawal04/telegram-bulk-uploader&type=Date)](https://star-history.com/#adityaagrawal04/telegram-bulk-uploader&Date)
+
+---
+
 ## Author
 
 **Aditya Sanjay Agrawal**

@@ -41,3 +41,9 @@ dependencies = [
 [project.scripts]
 telegram-bulk-uploader = "uploader:main"
 telegram-bulk-ui = "app:main"
+
+[tool.setuptools]
+py-modules = ["uploader", "fast_telethon", "app"]
+
+[tool.setuptools.package-data]
+"*" = ["static/*", "assets/*"]
