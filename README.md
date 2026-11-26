@@ -27,10 +27,6 @@
   <img src="assets/demo.gif" alt="Telegram Bulk Uploader Demo Walkthrough" width="760" style="border-radius:18px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);" />
 </p>
 
-<p align="center">
-  🍿 <i>Prefer sound? Listen to the voiceover explainer video in <a href="assets/demo.mp4"><b>assets/demo.mp4</b></a></i>
-</p>
-
 ---
 
 ## ⚡ The Vibe Check: The Struggle vs. The Fix
