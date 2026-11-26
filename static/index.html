@@ -6,559 +6,461 @@
   <title>Telegram Bulk Uploader</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #09090b;
-      --surface: rgba(23, 23, 26, 0.85);
-      --surface-hover: rgba(30, 30, 36, 0.92);
-      --border: rgba(255, 255, 255, 0.07);
-      --border-hover: rgba(255, 255, 255, 0.14);
-      --text: #fafafa;
-      --text-secondary: #a1a1aa;
-      --text-tertiary: #71717a;
-      --gold: #d4a853;
-      --gold-soft: rgba(212, 168, 83, 0.12);
-      --gold-border: rgba(212, 168, 83, 0.25);
-      --emerald: #34d399;
-      --emerald-soft: rgba(52, 211, 153, 0.1);
-      --rose: #fb7185;
-      --rose-soft: rgba(251, 113, 133, 0.1);
-      --radius: 14px;
-      --radius-sm: 10px;
+      --bg: #0c0e1a;
+      --bg-raised: #12152a;
+      --card: rgba(20, 24, 50, 0.72);
+      --card-hover: rgba(26, 30, 60, 0.82);
+      --border: rgba(120, 130, 220, 0.1);
+      --border-active: rgba(120, 130, 220, 0.25);
+      --text: #eef0ff;
+      --text-2: #9ba2cc;
+      --text-3: #636b96;
+      --accent: #6c5ce7;
+      --accent-light: #a29bfe;
+      --blue: #74b9ff;
+      --teal: #55efc4;
+      --coral: #fd79a8;
+      --peach: #ffeaa7;
+      --r: 20px;
+      --r-sm: 14px;
+      --r-xs: 10px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
-    /* Subtle grain texture */
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      opacity: 0.025;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-      pointer-events: none;
+    /* Ambient Light — Arc-inspired soft blurs */
+    .ambient {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
     }
-
-    /* Soft top glow */
-    .glow {
-      position: fixed;
-      top: -260px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 800px;
-      height: 500px;
-      background: radial-gradient(ellipse, rgba(212, 168, 83, 0.09) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.18;
     }
+    .orb-1 { width: 600px; height: 600px; background: #6c5ce7; top: -180px; left: -120px; }
+    .orb-2 { width: 500px; height: 500px; background: #74b9ff; top: 40%; right: -160px; opacity: 0.12; }
+    .orb-3 { width: 400px; height: 400px; background: #fd79a8; bottom: -100px; left: 30%; opacity: 0.1; }
 
-    .shell {
+    .app {
       position: relative;
       z-index: 1;
-      max-width: 980px;
+      max-width: 960px;
       margin: 0 auto;
-      padding: 36px 20px 56px;
+      padding: 32px 20px 60px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
     }
 
-    /* Header */
-    header {
+    /* ——— Top Bar ——— */
+    .topbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 12px;
+      padding: 10px 0;
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 14px;
+    .logo-group { display: flex; align-items: center; gap: 14px; }
+    .logo-mark {
+      width: 44px; height: 44px;
+      border-radius: 14px;
+      display: grid; place-items: center;
+      font-size: 1.3rem;
+      background: linear-gradient(140deg, #6c5ce7, #a29bfe, #74b9ff);
+      box-shadow: 0 4px 28px rgba(108, 92, 231, 0.35);
     }
-    .brand-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      display: grid;
-      place-items: center;
-      font-size: 1.2rem;
-      background: linear-gradient(135deg, var(--gold) 0%, #b8860b 100%);
-      box-shadow: 0 0 32px rgba(212, 168, 83, 0.25);
-    }
-    .brand h1 {
-      font-size: 1.45rem;
-      font-weight: 800;
+    .logo-text h1 {
+      font-size: 1.35rem; font-weight: 800;
       letter-spacing: -0.03em;
-      color: var(--text);
+      background: linear-gradient(90deg, #eef0ff, #a29bfe);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .brand p {
-      font-size: 0.78rem;
-      color: var(--text-tertiary);
-      margin-top: 2px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    .badge {
-      padding: 7px 14px;
+    .logo-text span { font-size: 0.72rem; color: var(--text-3); letter-spacing: 0.06em; text-transform: uppercase; }
+    .pill {
+      padding: 8px 16px;
       border-radius: 999px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
-      letter-spacing: 0.01em;
+      font-size: 0.8rem; font-weight: 600;
+      background: rgba(108, 92, 231, 0.1);
+      border: 1px solid rgba(108, 92, 231, 0.2);
+      color: var(--accent-light);
+      backdrop-filter: blur(8px);
     }
-    .badge.ok {
-      border-color: var(--gold-border);
-      color: var(--gold);
-      background: var(--gold-soft);
+    .pill.live {
+      background: rgba(85, 239, 196, 0.1);
+      border-color: rgba(85, 239, 196, 0.25);
+      color: var(--teal);
     }
 
-    /* Cards */
+    /* ——— Cards ——— */
     .card {
-      background: var(--surface);
+      background: var(--card);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      backdrop-filter: blur(12px);
-      transition: border-color 0.2s;
+      border-radius: var(--r);
+      padding: 26px;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      transition: border-color 0.25s, box-shadow 0.25s;
     }
-    .card:hover { border-color: var(--border-hover); }
-    .card-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 18px;
+    .card:hover {
+      border-color: var(--border-active);
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     }
-    .card-head h2 {
-      font-size: 1rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .card-top {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 10px; margin-bottom: 20px;
     }
-    .step {
-      font-size: 0.65rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      padding: 4px 10px;
-      border-radius: 6px;
-      background: var(--gold-soft);
-      border: 1px solid var(--gold-border);
-      color: var(--gold);
+    .card-top h2 {
+      font-size: 1.05rem; font-weight: 700;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .tag {
+      font-size: 0.6rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      padding: 5px 10px; border-radius: 8px;
+      background: linear-gradient(135deg, rgba(108, 92, 231, 0.18), rgba(162, 155, 254, 0.1));
+      border: 1px solid rgba(108, 92, 231, 0.22);
+      color: var(--accent-light);
     }
 
-    /* Form elements */
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+    /* ——— Forms ——— */
+    .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
     label {
-      display: block;
-      font-size: 0.77rem;
-      font-weight: 500;
-      color: var(--text-tertiary);
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+      display: block; font-size: 0.72rem; font-weight: 600;
+      color: var(--text-3); margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.07em;
     }
     input, select {
-      width: 100%;
-      padding: 10px 13px;
-      border-radius: var(--radius-sm);
+      width: 100%; padding: 11px 14px;
+      border-radius: var(--r-xs);
       border: 1px solid var(--border);
-      background: rgba(9, 9, 11, 0.7);
-      color: var(--text);
-      font-size: 0.9rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      background: rgba(12, 14, 26, 0.8);
+      color: var(--text); font-size: 0.88rem;
+      font-family: inherit; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
     input:focus, select:focus {
-      border-color: rgba(212, 168, 83, 0.5);
-      box-shadow: 0 0 0 3px rgba(212, 168, 83, 0.08);
+      border-color: rgba(108, 92, 231, 0.55);
+      box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.1);
     }
-    input::placeholder { color: var(--text-tertiary); }
+    input::placeholder { color: var(--text-3); }
 
-    /* Buttons */
-    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+    /* ——— Buttons ——— */
+    .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
     button {
-      padding: 10px 18px;
-      border-radius: var(--radius-sm);
-      border: 1px solid transparent;
-      font-weight: 600;
-      font-size: 0.85rem;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.15s;
-      letter-spacing: -0.01em;
+      padding: 11px 20px; border-radius: var(--r-xs);
+      border: none; font-weight: 700; font-size: 0.84rem;
+      font-family: inherit; cursor: pointer;
+      transition: all 0.18s; letter-spacing: -0.01em;
+      position: relative; overflow: hidden;
     }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--gold), #c49b3a);
-      color: #09090b;
-      box-shadow: 0 2px 16px rgba(212, 168, 83, 0.2);
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-main {
+      background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(108, 92, 231, 0.3);
     }
-    .btn-primary:hover:not(:disabled) {
-      box-shadow: 0 4px 24px rgba(212, 168, 83, 0.35);
+    .btn-main:hover:not(:disabled) {
+      box-shadow: 0 6px 28px rgba(108, 92, 231, 0.45);
       transform: translateY(-1px);
     }
-    .btn-ghost {
-      background: transparent;
-      color: var(--text-secondary);
-      border-color: var(--border);
-    }
-    .btn-ghost:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.04);
-      border-color: var(--border-hover);
-      color: var(--text);
-    }
-    .btn-danger {
-      background: var(--rose-soft);
-      color: var(--rose);
-      border-color: rgba(251, 113, 133, 0.2);
-    }
-    .btn-danger:hover:not(:disabled) {
-      background: rgba(251, 113, 133, 0.18);
-    }
-
-    /* Toggles row */
-    .toggles {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-top: 16px;
-      padding: 12px 16px;
-      border-radius: var(--radius-sm);
-      background: rgba(9, 9, 11, 0.5);
+    .btn-soft {
+      background: rgba(120, 130, 220, 0.08);
+      color: var(--text-2);
       border: 1px solid var(--border);
     }
-    .toggles label {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      text-transform: none;
-      letter-spacing: normal;
-      font-size: 0.84rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      cursor: pointer;
-      margin: 0;
-    }
-    .toggles input[type="checkbox"] {
-      width: auto;
-      accent-color: var(--gold);
-    }
-
-    /* List boxes */
-    .list-box {
-      max-height: 230px;
-      overflow-y: auto;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: rgba(9, 9, 11, 0.6);
-      padding: 10px;
-      margin-top: 12px;
-    }
-    .list-box strong { font-size: 0.78rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; }
-    .item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 7px 8px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      font-size: 0.86rem;
-      gap: 10px;
-    }
-    .item:last-child { border-bottom: none; }
-    .item label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .btn-soft:hover:not(:disabled) {
+      background: rgba(120, 130, 220, 0.14);
       color: var(--text);
-      text-transform: none;
-      letter-spacing: normal;
-      font-size: 0.86rem;
-      font-weight: 400;
-      cursor: pointer;
-      margin: 0;
+    }
+    .btn-stop {
+      background: rgba(253, 121, 168, 0.12);
+      color: var(--coral);
+      border: 1px solid rgba(253, 121, 168, 0.2);
+    }
+    .btn-stop:hover:not(:disabled) { background: rgba(253, 121, 168, 0.22); }
+
+    /* ——— Toggles ——— */
+    .opts {
+      display: flex; gap: 22px; flex-wrap: wrap; margin-top: 18px;
+      padding: 14px 18px; border-radius: var(--r-sm);
+      background: rgba(12, 14, 26, 0.6);
+      border: 1px solid var(--border);
+    }
+    .opts label {
+      display: flex; align-items: center; gap: 8px;
+      text-transform: none; letter-spacing: normal;
+      font-size: 0.84rem; font-weight: 500;
+      color: var(--text-2); cursor: pointer; margin: 0;
+    }
+    .opts input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+
+    /* ——— Lists ——— */
+    .scroll-box {
+      max-height: 220px; overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      background: rgba(12, 14, 26, 0.65);
+      padding: 12px; margin-top: 12px;
+    }
+    .scroll-box::-webkit-scrollbar { width: 6px; }
+    .scroll-box::-webkit-scrollbar-track { background: transparent; }
+    .scroll-box::-webkit-scrollbar-thumb { background: rgba(108, 92, 231, 0.25); border-radius: 3px; }
+    .scroll-box strong { font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; display: block; margin-bottom: 6px; }
+    .row-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 10px; border-radius: 8px;
+      font-size: 0.84rem; gap: 10px;
+      transition: background 0.15s;
+    }
+    .row-item:hover { background: rgba(108, 92, 231, 0.05); }
+    .row-item label {
+      display: flex; align-items: center; gap: 9px;
+      color: var(--text); text-transform: none; letter-spacing: normal;
+      font-size: 0.84rem; font-weight: 400; cursor: pointer; margin: 0;
       word-break: break-all;
     }
-    .item input[type="checkbox"] { width: auto; accent-color: var(--gold); }
+    .row-item input[type="checkbox"] { width: auto; accent-color: var(--accent-light); flex-shrink: 0; }
 
-    .muted { color: var(--text-tertiary); font-size: 0.82rem; }
+    .dim { color: var(--text-3); font-size: 0.8rem; white-space: nowrap; }
 
-    /* Progress */
-    .progress-track {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 999px;
-      height: 8px;
-      overflow: hidden;
-      margin: 6px 0;
+    /* ——— Progress ——— */
+    .track {
+      background: rgba(108, 92, 231, 0.08);
+      border-radius: 999px; height: 6px; overflow: hidden; margin: 6px 0;
     }
-    .progress-fill {
-      height: 100%;
-      border-radius: 999px;
-      width: 0%;
+    .fill {
+      height: 100%; border-radius: 999px; width: 0%;
       transition: width 0.3s ease;
     }
-    .progress-fill.gold { background: linear-gradient(90deg, #b8860b, var(--gold), #e8c547); }
-    .progress-fill.emerald { background: linear-gradient(90deg, #059669, var(--emerald)); }
+    .fill-purple { background: linear-gradient(90deg, #6c5ce7, #a29bfe, #74b9ff); }
+    .fill-teal { background: linear-gradient(90deg, #00b894, #55efc4); }
 
-    /* Logs */
-    pre.logs {
-      background: rgba(4, 4, 6, 0.9);
+    /* ——— Logs ——— */
+    pre.terminal {
+      background: rgba(8, 10, 18, 0.92);
       border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 14px;
-      max-height: 200px;
-      overflow-y: auto;
+      border-radius: var(--r-sm);
+      padding: 16px;
+      max-height: 190px; overflow-y: auto;
       font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-      font-size: 0.78rem;
-      line-height: 1.55;
-      color: var(--text-secondary);
-      margin: 14px 0 0;
+      font-size: 0.76rem; line-height: 1.6;
+      color: var(--text-3); margin: 16px 0 0;
     }
+    pre.terminal::-webkit-scrollbar { width: 5px; }
+    pre.terminal::-webkit-scrollbar-thumb { background: rgba(108, 92, 231, 0.2); border-radius: 3px; }
 
-    /* Guide */
-    details.guide {
-      margin-top: 14px;
-      padding: 12px 16px;
-      border-radius: var(--radius-sm);
-      background: var(--gold-soft);
-      border: 1px solid var(--gold-border);
+    /* ——— Guide ——— */
+    details.tip {
+      margin-top: 16px; padding: 14px 18px;
+      border-radius: var(--r-sm);
+      background: rgba(108, 92, 231, 0.06);
+      border: 1px solid rgba(108, 92, 231, 0.15);
       font-size: 0.84rem;
     }
-    details.guide summary { cursor: pointer; font-weight: 600; color: var(--gold); }
-    details.guide ol { margin: 10px 0 0 20px; color: var(--text-secondary); line-height: 1.6; }
-    details.guide code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.82rem; }
-    details.guide a { color: var(--gold); }
+    details.tip summary { cursor: pointer; font-weight: 600; color: var(--accent-light); }
+    details.tip ol { margin: 10px 0 0 20px; color: var(--text-2); line-height: 1.65; }
+    details.tip code { background: rgba(0,0,0,0.3); padding: 2px 7px; border-radius: 5px; font-size: 0.8rem; }
+    details.tip a { color: var(--blue); text-decoration: none; }
+    details.tip a:hover { text-decoration: underline; }
 
     .hidden { display: none; }
-    .msg { margin-top: 10px; font-size: 0.86rem; color: var(--gold); font-weight: 500; }
+    .note { margin-top: 10px; font-size: 0.84rem; color: var(--peach); font-weight: 500; }
+
+    @media (max-width: 600px) {
+      .app { padding: 20px 14px 40px; }
+      .card { padding: 18px; }
+      .fields { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <div class="glow"></div>
+  <div class="ambient">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
 
-  <div class="shell">
-    <header>
-      <div class="brand">
-        <div class="brand-icon">📡</div>
-        <div>
+  <div class="app">
+    <div class="topbar">
+      <div class="logo-group">
+        <div class="logo-mark">📡</div>
+        <div class="logo-text">
           <h1>Telegram Bulk Uploader</h1>
-          <p>Zero-compression archiver</p>
+          <span>Zero-compression archiver</span>
         </div>
       </div>
-      <span id="authBadge" class="badge">Checking...</span>
-    </header>
+      <span id="authBadge" class="pill">Checking...</span>
+    </div>
 
-    <!-- 1. Auth -->
-    <section class="card" id="authCard">
-      <div class="card-head">
-        <h2><span class="step">Step 1</span> Connect Telegram</h2>
+    <!-- Step 1 -->
+    <section class="card">
+      <div class="card-top">
+        <h2><span class="tag">Step 1</span> Connect Telegram</h2>
       </div>
       <div id="loggedOutView">
-        <div class="grid">
+        <div class="fields">
           <div><label>API ID</label><input id="apiId" type="number" placeholder="12345678" /></div>
           <div><label>API Hash</label><input id="apiHash" type="text" placeholder="your_api_hash" /></div>
           <div><label>Phone Number</label><input id="phone" type="text" placeholder="+1234567890" /></div>
         </div>
-        <div class="row">
-          <button class="btn-primary" onclick="sendCode()">Send Login Code</button>
+        <div class="actions">
+          <button class="btn-main" onclick="sendCode()">Send Login Code</button>
         </div>
-        <div id="otpSection" class="grid hidden" style="margin-top:14px;">
+        <div id="otpSection" class="fields hidden" style="margin-top:16px;">
           <div><label>Verification Code</label><input id="otpCode" type="text" placeholder="12345" /></div>
           <div id="passwordWrap" class="hidden"><label>2FA Password</label><input id="twoFaPassword" type="password" placeholder="Password" /></div>
-          <div style="display:flex;align-items:end;"><button class="btn-primary" onclick="verifyCode()">Verify &amp; Sign In</button></div>
+          <div style="display:flex;align-items:end;"><button class="btn-main" onclick="verifyCode()">Verify &amp; Sign In</button></div>
         </div>
-        <details class="guide">
+        <details class="tip">
           <summary>Where do I get API ID &amp; Hash?</summary>
           <ol>
-            <li>Open <a href="https://my.telegram.org" target="_blank">my.telegram.org</a> and sign in.</li>
-            <li>Click <strong>API development tools</strong> → create an app.</li>
+            <li>Go to <a href="https://my.telegram.org" target="_blank">my.telegram.org</a> and sign in.</li>
+            <li>Click <strong>API development tools</strong> → create an app (any name).</li>
             <li>Copy <code>api_id</code> and <code>api_hash</code> into the fields above.</li>
           </ol>
         </details>
       </div>
       <div id="loggedInView" class="hidden">
-        <p id="userSummary" style="font-weight:500;margin-bottom:12px;"></p>
-        <button class="btn-ghost" onclick="logout()">Log Out</button>
+        <p id="userSummary" style="font-weight:600;margin-bottom:14px;"></p>
+        <button class="btn-soft" onclick="logout()">Log Out</button>
       </div>
-      <div id="authMsg" class="msg"></div>
+      <div id="authMsg" class="note"></div>
     </section>
 
-    <!-- 2. Source & Target -->
+    <!-- Step 2 -->
     <section class="card">
-      <div class="card-head">
-        <h2><span class="step">Step 2</span> Select Source &amp; Destination</h2>
+      <div class="card-top">
+        <h2><span class="tag">Step 2</span> Source &amp; Destination</h2>
       </div>
-      <div class="grid">
+      <div class="fields">
         <div><label>Source Folder</label><input id="sourcePath" type="text" placeholder="D:\Photos\2025" /></div>
-        <div><label>Target Chat</label>
-          <select id="targetSelect" onchange="syncTargetInput()"><option value="me">Saved Messages (me)</option></select>
-        </div>
+        <div><label>Target Chat</label><select id="targetSelect" onchange="syncTarget()"><option value="me">Saved Messages (me)</option></select></div>
         <div><label>Custom Target</label><input id="targetCustom" type="text" value="me" /></div>
       </div>
-      <div class="grid" style="margin-top:14px;">
+      <div class="fields" style="margin-top:14px;">
         <div><label>Extension Filter</label><input id="extFilter" type="text" placeholder=".jpg .mp4 .mov" /></div>
         <div><label>Include Patterns</label><input id="includeGlob" type="text" placeholder="*.jpg IMG_*" /></div>
-        <div><label>Upload Delay (sec)</label><input id="delayInput" type="number" step="0.5" value="1.5" /></div>
+        <div><label>Delay (sec)</label><input id="delayInput" type="number" step="0.5" value="1.5" /></div>
       </div>
-      <div class="toggles">
-        <label><input type="checkbox" id="splitLarge" checked /> Auto-split &gt;2GB videos (FFmpeg)</label>
-        <label><input type="checkbox" id="premiumMode" /> Premium 4GB limit</label>
+      <div class="opts">
+        <label><input type="checkbox" id="splitLarge" checked /> Auto-split &gt;2GB videos</label>
+        <label><input type="checkbox" id="premiumMode" /> Premium 4GB</label>
         <label><input type="checkbox" id="compressMedia" /> Compress media</label>
       </div>
-      <div class="row">
-        <button class="btn-primary" onclick="scanFolder()">Scan Folder</button>
-        <button class="btn-ghost" onclick="selectAllFiles(true)">Select All</button>
-        <button class="btn-ghost" onclick="selectAllFiles(false)">Clear</button>
-        <span id="scanSummary" class="muted"></span>
+      <div class="actions">
+        <button class="btn-main" onclick="scanFolder()">Scan Folder</button>
+        <button class="btn-soft" onclick="selectAll(true)">Select All</button>
+        <button class="btn-soft" onclick="selectAll(false)">Clear</button>
+        <span id="scanSummary" class="dim"></span>
       </div>
-      <div id="folderList" class="list-box hidden"></div>
-      <div id="fileList" class="list-box hidden"></div>
-      <div id="browseMsg" class="msg"></div>
+      <div id="folderList" class="scroll-box hidden"></div>
+      <div id="fileList" class="scroll-box hidden"></div>
+      <div id="browseMsg" class="note"></div>
     </section>
 
-    <!-- 3. Upload Queue -->
+    <!-- Step 3 -->
     <section class="card">
-      <div class="card-head">
-        <h2><span class="step">Step 3</span> Upload Queue</h2>
-        <span id="statusText" class="muted">Idle</span>
+      <div class="card-top">
+        <h2><span class="tag">Step 3</span> Upload Queue</h2>
+        <span id="statusText" class="dim">Idle</span>
       </div>
-      <div class="row" style="margin-top:0;">
-        <button id="startBtn" class="btn-primary" onclick="startUpload()">▶ Start Upload</button>
-        <button id="stopBtn" class="btn-danger" onclick="stopUpload()" disabled>■ Stop</button>
+      <div class="actions" style="margin-top:0;">
+        <button id="startBtn" class="btn-main" onclick="startUpload()">▶ Start Upload</button>
+        <button id="stopBtn" class="btn-stop" onclick="stopUpload()" disabled>■ Stop</button>
       </div>
-      <div style="margin-top:18px;">
-        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-tertiary);">
-          <span>Queue Progress</span><span id="overallLabel">0 / 0</span>
+      <div style="margin-top:20px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--text-3);">
+          <span>Queue</span><span id="overallLabel">0 / 0</span>
         </div>
-        <div class="progress-track"><div id="overallBar" class="progress-fill emerald"></div></div>
-        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:var(--text-tertiary);margin-top:10px;">
+        <div class="track"><div id="overallBar" class="fill fill-teal"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--text-3);margin-top:12px;">
           <span id="currentFileLabel">Current: —</span><span id="currentPctLabel">0%</span>
         </div>
-        <div class="progress-track"><div id="currentBar" class="progress-fill gold"></div></div>
+        <div class="track"><div id="currentBar" class="fill fill-purple"></div></div>
       </div>
-      <pre id="logsBox" class="logs">Waiting for upload to start...</pre>
+      <pre id="logsBox" class="terminal">Waiting for upload to start...</pre>
     </section>
   </div>
 
   <script>
-    let scannedFiles = [];
-    async function api(url, method="GET", body=null) {
-      const opts = { method, headers: {"Content-Type":"application/json"} };
-      if (body) opts.body = JSON.stringify(body);
-      const res = await fetch(url, opts);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Request failed");
-      return data;
-    }
-    async function checkAuth() {
-      const d = await api("/api/auth/status");
-      const badge = document.getElementById("authBadge");
-      if (d.api_id) document.getElementById("apiId").value = d.api_id;
-      if (d.phone) document.getElementById("phone").value = d.phone;
-      if (d.authorized) {
-        badge.textContent = `● ${d.user.first_name || d.user.phone}`;
-        badge.classList.add("ok");
+    let scanned = [];
+    async function api(u,m="GET",b=null){const o={method:m,headers:{"Content-Type":"application/json"}};if(b)o.body=JSON.stringify(b);const r=await fetch(u,o);const d=await r.json();if(!r.ok)throw new Error(d.detail||"Request failed");return d;}
+    function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+    function syncTarget(){document.getElementById("targetCustom").value=document.getElementById("targetSelect").value;}
+
+    async function checkAuth(){
+      const d=await api("/api/auth/status");const b=document.getElementById("authBadge");
+      if(d.api_id)document.getElementById("apiId").value=d.api_id;
+      if(d.phone)document.getElementById("phone").value=d.phone;
+      if(d.authorized){
+        b.textContent=`● ${d.user.first_name||d.user.phone}`;b.classList.add("live");
         document.getElementById("loggedOutView").classList.add("hidden");
         document.getElementById("loggedInView").classList.remove("hidden");
-        document.getElementById("userSummary").textContent =
-          `Signed in as ${d.user.first_name} (@${d.user.username||"—"}, ${d.user.phone})`;
+        document.getElementById("userSummary").textContent=`Signed in as ${d.user.first_name} (@${d.user.username||"—"}, ${d.user.phone})`;
         loadDialogs();
-      } else {
-        badge.textContent = "Not connected";
-        badge.classList.remove("ok");
-        document.getElementById("loggedOutView").classList.remove("hidden");
-        document.getElementById("loggedInView").classList.add("hidden");
-      }
+      }else{b.textContent="Not connected";b.classList.remove("live");document.getElementById("loggedOutView").classList.remove("hidden");document.getElementById("loggedInView").classList.add("hidden");}
     }
-    async function loadDialogs() {
-      try {
-        const d = await api("/api/dialogs");
-        const sel = document.getElementById("targetSelect");
-        sel.innerHTML = "";
-        d.dialogs.forEach(x => { const o=document.createElement("option"); o.value=x.id; o.textContent=`${x.name} [${x.type}]`; sel.appendChild(o); });
-      } catch {}
+    async function loadDialogs(){try{const d=await api("/api/dialogs");const s=document.getElementById("targetSelect");s.innerHTML="";d.dialogs.forEach(x=>{const o=document.createElement("option");o.value=x.id;o.textContent=`${x.name} [${x.type}]`;s.appendChild(o);});}catch{}}
+    async function sendCode(){const m=document.getElementById("authMsg");m.textContent="";try{const r=await api("/api/auth/send-code","POST",{api_id:+document.getElementById("apiId").value,api_hash:document.getElementById("apiHash").value,phone:document.getElementById("phone").value,save_env:true});if(r.already_authorized)return checkAuth();document.getElementById("otpSection").classList.remove("hidden");m.textContent="Code sent to your Telegram app.";}catch(e){m.textContent=e.message;}}
+    async function verifyCode(){const m=document.getElementById("authMsg");m.textContent="";try{const r=await api("/api/auth/verify-code","POST",{code:document.getElementById("otpCode").value,password:document.getElementById("twoFaPassword").value||null});if(r.needs_password){document.getElementById("passwordWrap").classList.remove("hidden");m.textContent="Enter your 2FA password.";return;}checkAuth();}catch(e){m.textContent=e.message;}}
+    async function logout(){try{await api("/api/auth/logout","POST");checkAuth();}catch(e){document.getElementById("authMsg").textContent=e.message;}}
+
+    async function scanFolder(){
+      const m=document.getElementById("browseMsg");m.textContent="";
+      const ext=document.getElementById("extFilter").value.trim();
+      const glob=document.getElementById("includeGlob").value.trim();
+      try{
+        const d=await api("/api/browse","POST",{source:document.getElementById("sourcePath").value,ext:ext?ext.split(/\s+/):null,include_patterns:glob?glob.split(/\s+/):null});
+        scanned=d.files;document.getElementById("scanSummary").textContent=`${d.total_files} files · ${d.folders.length} folders`;
+        render(d.folders,d.files);
+      }catch(e){m.textContent=e.message;}
     }
-    function syncTargetInput() { document.getElementById("targetCustom").value = document.getElementById("targetSelect").value; }
-    async function sendCode() {
-      const msg = document.getElementById("authMsg"); msg.textContent = "";
-      try {
-        const r = await api("/api/auth/send-code","POST",{api_id:parseInt(document.getElementById("apiId").value,10),api_hash:document.getElementById("apiHash").value,phone:document.getElementById("phone").value,save_env:true});
-        if (r.already_authorized) return checkAuth();
-        document.getElementById("otpSection").classList.remove("hidden");
-        msg.textContent = "Code sent to your Telegram app.";
-      } catch (e) { msg.textContent = e.message; }
+    function render(folders,files){
+      const fB=document.getElementById("folderList"),xB=document.getElementById("fileList");
+      fB.classList.remove("hidden");xB.classList.remove("hidden");
+      fB.innerHTML="<strong>Folders</strong>"+folders.map(f=>`<div class="row-item"><label><input type="checkbox" checked data-ft="${esc(f.folder)}"/> 📁 ${esc(f.folder)}</label><span class="dim">${f.count} files · ${f.size_human}</span></div>`).join("");
+      fB.querySelectorAll("input[data-ft]").forEach(c=>c.addEventListener("change",()=>toggle(c.dataset.ft,c.checked)));
+      xB.innerHTML="<strong>Files</strong>"+files.map(f=>`<div class="row-item"><label><input type="checkbox" class="fc" data-folder="${esc(f.folder)}" data-rel="${esc(f.rel_path)}" ${f.uploaded?"":"checked"}/> ${esc(f.rel_posix)}${f.uploaded?' <span class="dim">(done)</span>':""}</label><span class="dim">${f.size_human}</span></div>`).join("");
     }
-    async function verifyCode() {
-      const msg = document.getElementById("authMsg"); msg.textContent = "";
-      try {
-        const r = await api("/api/auth/verify-code","POST",{code:document.getElementById("otpCode").value,password:document.getElementById("twoFaPassword").value||null});
-        if (r.needs_password) { document.getElementById("passwordWrap").classList.remove("hidden"); msg.textContent = "Enter your 2FA password."; return; }
-        checkAuth();
-      } catch (e) { msg.textContent = e.message; }
+    function toggle(f,c){document.querySelectorAll(".fc").forEach(x=>{if(x.dataset.folder===f)x.checked=c;});}
+    function selectAll(c){document.querySelectorAll(".fc").forEach(x=>x.checked=c);}
+
+    async function startUpload(){
+      const sel=Array.from(document.querySelectorAll(".fc:checked")).map(c=>c.dataset.rel);
+      const m=document.getElementById("browseMsg");m.textContent="";
+      try{await api("/api/upload/start","POST",{source:document.getElementById("sourcePath").value,selected_files:scanned.length?sel:null,target:document.getElementById("targetCustom").value.trim()||"me",compress:document.getElementById("compressMedia").checked,premium:document.getElementById("premiumMode").checked,split_large:document.getElementById("splitLarge").checked,delay:parseFloat(document.getElementById("delayInput").value)||1.5});}catch(e){m.textContent=e.message;}
     }
-    async function logout() { try { await api("/api/auth/logout","POST"); checkAuth(); } catch (e) { document.getElementById("authMsg").textContent = e.message; } }
-    function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-    async function scanFolder() {
-      const msg = document.getElementById("browseMsg"); msg.textContent = "";
-      const ext = document.getElementById("extFilter").value.trim();
-      const glob = document.getElementById("includeGlob").value.trim();
-      try {
-        const d = await api("/api/browse","POST",{source:document.getElementById("sourcePath").value,ext:ext?ext.split(/\s+/):null,include_patterns:glob?glob.split(/\s+/):null});
-        scannedFiles = d.files;
-        document.getElementById("scanSummary").textContent = `${d.total_files} files · ${d.folders.length} folders`;
-        renderResults(d.folders, d.files);
-      } catch (e) { msg.textContent = e.message; }
+    async function stopUpload(){await api("/api/upload/stop","POST");}
+    async function poll(){
+      try{
+        const s=await api("/api/upload/status");
+        document.getElementById("startBtn").disabled=s.running;document.getElementById("stopBtn").disabled=!s.running;
+        document.getElementById("statusText").textContent=s.status_message;
+        const done=s.completed_files+s.skipped_files;const pct=s.total_files?Math.round((done/s.total_files)*100):0;
+        document.getElementById("overallLabel").textContent=`${s.completed_files} done, ${s.skipped_files} skipped / ${s.total_files}`;
+        document.getElementById("overallBar").style.width=pct+"%";
+        document.getElementById("currentFileLabel").textContent=s.current_file?`Current: ${s.current_file}`:"Current: —";
+        document.getElementById("currentPctLabel").textContent=s.current_progress_pct+"%";
+        document.getElementById("currentBar").style.width=s.current_progress_pct+"%";
+        if(s.logs.length){const b=document.getElementById("logsBox");b.textContent=s.logs.join("\n");b.scrollTop=b.scrollHeight;}
+      }catch{}
     }
-    function renderResults(folders, files) {
-      const fB = document.getElementById("folderList"), xB = document.getElementById("fileList");
-      fB.classList.remove("hidden"); xB.classList.remove("hidden");
-      fB.innerHTML = "<strong>Folders</strong>" + folders.map(f=>`<div class="item"><label><input type="checkbox" checked data-ft="${esc(f.folder)}" /> 📁 ${esc(f.folder)}</label><span class="muted">${f.count} files · ${f.size_human}</span></div>`).join("");
-      fB.querySelectorAll("input[data-ft]").forEach(cb => cb.addEventListener("change", () => toggleFolder(cb.dataset.ft, cb.checked)));
-      xB.innerHTML = "<strong>Files</strong>" + files.map(f=>`<div class="item"><label><input type="checkbox" class="fc" data-folder="${esc(f.folder)}" data-rel="${esc(f.rel_path)}" ${f.uploaded?"":"checked"} /> ${esc(f.rel_posix)} ${f.uploaded?'<span class="muted">(done)</span>':""}</label><span class="muted">${f.size_human}</span></div>`).join("");
-    }
-    function toggleFolder(f, c) { document.querySelectorAll(".fc").forEach(cb => { if (cb.dataset.folder===f) cb.checked=c; }); }
-    function selectAllFiles(c) { document.querySelectorAll(".fc").forEach(cb => cb.checked=c); }
-    async function startUpload() {
-      const sel = Array.from(document.querySelectorAll(".fc:checked")).map(cb=>cb.dataset.rel);
-      const msg = document.getElementById("browseMsg"); msg.textContent = "";
-      try {
-        await api("/api/upload/start","POST",{source:document.getElementById("sourcePath").value,selected_files:scannedFiles.length?sel:null,target:document.getElementById("targetCustom").value.trim()||"me",compress:document.getElementById("compressMedia").checked,premium:document.getElementById("premiumMode").checked,split_large:document.getElementById("splitLarge").checked,delay:parseFloat(document.getElementById("delayInput").value)||1.5});
-      } catch (e) { msg.textContent = e.message; }
-    }
-    async function stopUpload() { await api("/api/upload/stop","POST"); }
-    async function poll() {
-      try {
-        const s = await api("/api/upload/status");
-        document.getElementById("startBtn").disabled = s.running;
-        document.getElementById("stopBtn").disabled = !s.running;
-        document.getElementById("statusText").textContent = s.status_message;
-        const done = s.completed_files + s.skipped_files;
-        const pct = s.total_files ? Math.round((done/s.total_files)*100) : 0;
-        document.getElementById("overallLabel").textContent = `${s.completed_files} done, ${s.skipped_files} skipped / ${s.total_files}`;
-        document.getElementById("overallBar").style.width = pct+"%";
-        document.getElementById("currentFileLabel").textContent = s.current_file ? `Current: ${s.current_file}` : "Current: —";
-        document.getElementById("currentPctLabel").textContent = s.current_progress_pct+"%";
-        document.getElementById("currentBar").style.width = s.current_progress_pct+"%";
-        if (s.logs.length) { const b=document.getElementById("logsBox"); b.textContent=s.logs.join("\n"); b.scrollTop=b.scrollHeight; }
-      } catch {}
-    }
-    checkAuth();
-    setInterval(poll, 1000);
+    checkAuth();setInterval(poll,1000);
   </script>
 </body>
 </html>
