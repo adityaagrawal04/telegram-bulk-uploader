@@ -10,6 +10,7 @@ import tempfile
 from dotenv import load_dotenv
 from tqdm import tqdm
 from telethon import TelegramClient, errors
+from fast_telethon import fast_upload_file
 
 load_dotenv()
 
@@ -356,7 +357,7 @@ def split_video_file(file_path, output_dir, max_file_size):
 async def upload_file_with_retry(
     client, target, file_path, caption, force_document, delay, desc_label, rel_path
 ):
-    """Upload a single file with tqdm progress bar and FloodWait/error retries."""
+    """Upload a single file with fast parallel chunks, tqdm progress bar, and FloodWait/error retries."""
     file_size = os.path.getsize(file_path)
     while True:
         try:
@@ -371,13 +372,19 @@ async def upload_file_with_retry(
                     pbar.n = current
                     pbar.refresh()
 
+                # Fast parallel multipart upload
+                uploaded_input = await fast_upload_file(
+                    client,
+                    file_path,
+                    progress_callback=progress_callback,
+                    max_workers=8
+                )
+
                 await client.send_file(
                     target,
-                    file_path,
+                    uploaded_input,
                     caption=caption,
                     force_document=force_document,
-                    part_size_kb=512,
-                    progress_callback=progress_callback,
                 )
 
             await asyncio.sleep(delay)

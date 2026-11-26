@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from telethon import TelegramClient, errors
+from fast_telethon import fast_upload_file
 
 import uploader
 
@@ -325,7 +326,7 @@ async def browse_folder(req: BrowseRequest):
 
 
 async def _send_with_progress(client, target, file_path, caption, force_document, delay, label):
-    """Upload a single file with live progress updates on UploadState."""
+    """Upload a single file with fast parallel workers and live progress updates on UploadState."""
     file_size = os.path.getsize(file_path)
     state.current_file = label
     state.current_bytes = 0
@@ -337,13 +338,19 @@ async def _send_with_progress(client, target, file_path, caption, force_document
                 state.current_bytes = current
                 state.current_total_bytes = total or file_size
 
+            # Turbocharged parallel upload
+            uploaded_input = await fast_upload_file(
+                client,
+                file_path,
+                progress_callback=progress_cb,
+                max_workers=8
+            )
+
             await client.send_file(
                 target,
-                file_path,
+                uploaded_input,
                 caption=caption,
                 force_document=force_document,
-                part_size_kb=512,
-                progress_callback=progress_cb,
             )
             await asyncio.sleep(delay)
             return
