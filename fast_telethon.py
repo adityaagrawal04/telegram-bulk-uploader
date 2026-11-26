@@ -13,7 +13,7 @@ import hashlib
 import inspect
 from typing import Optional, List
 
-from telethon import helpers, utils
+from telethon import helpers, utils, errors
 from telethon.network import MTProtoSender
 from telethon.tl import types
 from telethon.tl.alltlobjects import LAYER
@@ -57,7 +57,17 @@ class UploadSender:
                 file_part=part_index,
                 bytes=data
             )
-        await self.client._call(self.sender, req)
+        for attempt in range(4):
+            try:
+                await self.client._call(self.sender, req, flood_sleep_threshold=60)
+                return
+            except errors.FloodWaitError as e:
+                # Anti-ban protection: Strictly obey Telegram's requested wait duration + 2s grace
+                await asyncio.sleep(e.seconds + 2)
+            except (ConnectionError, asyncio.TimeoutError, OSError):
+                await asyncio.sleep(0.5 * (attempt + 1))
+        # Final attempt
+        await self.client._call(self.sender, req, flood_sleep_threshold=60)
 
     async def wait_complete(self):
         """Ensure the last queued chunk completes successfully."""

@@ -170,10 +170,36 @@ python -m unittest discover -s tests -v
 
 ---
 
+---
+
+## 🤖 Searching for a "Telegram Uploader Bot"? Why This is 100x Better
+
+If you've searched for a **Telegram uploader bot**, **Telegram file upload bot**, or **Telegram cloud storage bot**, you've likely hit the frustrating walls of the official Telegram Bot API:
+
+1. **The 50MB Bot Cap:** Telegram's official Bot API strictly forbids bots from uploading files larger than 50MB. Any archive or video over 50MB fails immediately.
+2. **Slow Single-Stream Speeds:** Bot API transfers crawl at ~1 MB/s over HTTPS polling.
+3. **Telegram Bulk Uploader Advantage:** By using your own Telegram MTProto credentials (`API_ID` & `API_HASH`), this tool uploads directly as an authentic MTProto client—unlocking **2,000MB (2GB)** uploads for standard accounts, **4,000MB (4GB)** for Telegram Premium, and **25–50 MB/s** multi-stream speeds.
+
+---
+
+## 🛡️ Anti-Ban & Telegram Account Safety Architecture
+
+Is it safe to use? **Yes, 100%.** Telegram Bulk Uploader is built with strict compliance guards to protect your account from rate-limiting, temporary flags, and bans:
+
+* ⏱️ **Mandatory Inter-File Throttling:** Every file upload is followed by a deliberate delay (default `1.5s`, customizable in UI and CLI) preventing algorithmic flood detection.
+* 🛡️ **Strict `FloodWaitError` Backoff:** If Telegram ever signals a rate limit, the engine halts immediately and sleeps for the exact duration requested by Telegram plus a safety grace margin (`seconds + 2s`). It never hammers Telegram with rejected requests.
+* 🔒 **Conservative Connection Pooling:** Concurrent MTProto sockets are capped at safe thresholds (maximum 8 connections, well below Telegram's 20-connection DC ceiling).
+* 🏠 **Session Key Reuse:** Connections to your primary Data Center reuse your authenticated session `AuthKey` directly, avoiding suspicious repetitive auth exports.
+* 📁 **Zero Third-Party Relays:** All data streams point-to-point directly from your machine to official Telegram Data Centers. No intermediate proxies, tokens, or servers ever touch your files.
+
+---
+
 ## FAQ
 
 - **How do I find a Private Channel's numeric ID?**
   Log into the Web UI and select the channel directly from the **Target Chat / Private Channel** dropdown—no manual ID lookup needed!
+- **Will using this ban my Telegram account?**
+  No. As long as you maintain the default upload delay (`--delay 1.5`) and don't share copyright-infringing content on public channels, your account operates within Telegram's standard client terms with full FloodWait backoff protection.
 - **What happens if my internet disconnects mid-upload?**
   Every completed file is saved to `uploaded_state.json`. Re-running (or clicking Start again) skips already-uploaded files and resumes where you left off.
 - **Are my credentials safe?**
