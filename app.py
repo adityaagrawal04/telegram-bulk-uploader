@@ -1,6 +1,7 @@
 import os
 import sys
 import shutil
+import random
 import asyncio
 import tempfile
 import threading
@@ -363,6 +364,7 @@ async def _send_with_progress(client, target, file_path, caption, force_document
         except errors.FloodWaitError as e:
             state.log(f"[RATE LIMIT] FloodWait {e.seconds}s — pausing...")
             state.status_message = f"Rate limited ({e.seconds}s)"
+            delay = min(delay + 1.0, 10.0)
             await asyncio.sleep(e.seconds + 5)
         except (ConnectionError, asyncio.TimeoutError, OSError, errors.RPCError) as e:
             if attempt == max_retries - 1:
@@ -382,6 +384,7 @@ async def _send_with_progress(client, target, file_path, caption, force_document
             break
         except errors.FloodWaitError as e:
             state.log(f"[RATE LIMIT] FloodWait {e.seconds}s on message send...")
+            delay = min(delay + 1.0, 10.0)
             await asyncio.sleep(e.seconds + 5)
         except Exception as e:
             if not force_document:
@@ -400,7 +403,9 @@ async def _send_with_progress(client, target, file_path, caption, force_document
         except Exception as e:
             state.log(f"[WARN] Failed to delete {label}: {e}")
 
-    await asyncio.sleep(delay)
+    # Anti-ban human jitter: random variance to prevent mechanical pulse detection
+    jittered_delay = max(1.5, delay + random.uniform(0.1, 0.8))
+    await asyncio.sleep(jittered_delay)
 
 
 async def _run_background_upload(req: UploadStartRequest):
@@ -446,10 +451,14 @@ async def _run_background_upload(req: UploadStartRequest):
             if not state.running:
                 break
 
-            # Anti-flood shield: Every 20 files, pause for 8 seconds to prevent algorithmic rate-limiting
-            if session_upload_count > 0 and session_upload_count % 20 == 0:
-                state.log("[ANTI-FLOOD SHIELD] Pausing 8s after 20 files to maintain safe cadence and protect account...")
-                await asyncio.sleep(8)
+            # Anti-ban shield: Multi-tiered breathers for account longevity
+            if session_upload_count > 0:
+                if session_upload_count % 100 == 0:
+                    state.log(f"[ANTI-BAN SHIELD] Deep breather: pausing 35s after {session_upload_count} files for account safety...")
+                    await asyncio.sleep(35)
+                elif session_upload_count % 25 == 0:
+                    state.log(f"[ANTI-BAN SHIELD] Micro-breather: pausing 10s after {session_upload_count} files to keep cadence safe...")
+                    await asyncio.sleep(10)
 
             rel_path = os.path.relpath(file_path, source)
             st = os.stat(file_path)

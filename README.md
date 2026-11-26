@@ -189,13 +189,17 @@ Is it safe to use? **Yes, 100%.** Telegram Bulk Uploader is built with strict co
 > [!IMPORTANT]
 > **Anti-Ban Protection for Massive Archives (6,000+ Files):**
 > When uploading massive queues (e.g. 6,000+ wedding or family photo archives), rapid-fire messaging can trigger Telegram's automated spam heuristics. We've hardened the safety engine:
-> * **Default Upload Delay Increased to `3.0s`:** Default delay across the Web UI and CLI is calibrated to `3.0s` (ensuring ~20 messages/minute, strictly within Telegram's safe threshold).
-> * **Automatic Batch Cooldown:** Every 20 files, the engine automatically takes an **8-second breather** to mimic natural human usage.
-> * **Intelligent Document Fallback:** If Telegram ever rejects a high-res photo with *"exceeds 10MB"*, the engine instantly catches it and seamlessly retries as an uncompressed document without crashing your queue.
+> * **Calibrated Upload Delay (`3.0s` default):** Enforces a safe ~18–20 messages/minute cadence, strictly within Telegram's safe threshold.
+> * **Randomized Human Jitter (+0.1s to +0.8s):** Adds dynamic non-uniform variance between consecutive file sends, breaking mechanical heartbeat patterns and preventing bot signature flags.
+> * **Multi-Tiered Automated Cooldowns:**
+>   - **Micro-Breather:** Automatic 10-second pause every 25 files.
+>   - **Deep Breather:** Automatic 35-second pause every 100 files to simulate natural human usage.
+> * **Dynamic FloodWait Backoff:** Strictly obeys Telegram's rate-limit wait time plus a +5s safety margin (`seconds + 5s`), while automatically increasing session delay by +1.0s to let server limits recover.
+> * **Safe Photo Dimension Auto-Scaling & Document Fallback:** DSLR photos (>2560px) are automatically scaled and compressed using Pillow to adhere to Telegram's photo rules. If Telegram ever rejects a media item, the engine instantly falls back to sending it as an uncompressed document without crashing or stalling your queue.
 
 * ⏱️ **Mandatory Inter-File Throttling:** Every file upload is followed by a deliberate delay (default `3.0s`, customizable in UI and CLI) preventing algorithmic flood detection.
-* 🛡️ **Strict `FloodWaitError` Backoff:** If Telegram ever signals a rate limit, the engine halts immediately and sleeps for the exact duration requested by Telegram plus a safety grace margin (`seconds + 2s`). It never hammers Telegram with rejected requests.
-* 🔒 **Conservative Connection Pooling:** Concurrent MTProto sockets are capped at safe thresholds (maximum 8 connections, well below Telegram's 20-connection DC ceiling).
+* 🛡️ **Strict `FloodWaitError` Backoff:** If Telegram ever signals a rate limit, the engine halts immediately and sleeps for the exact duration requested by Telegram plus a safety grace margin (`seconds + 5s`). It never hammers Telegram with rejected requests.
+* 🔒 **Conservative Connection Pooling:** Concurrent MTProto sockets are capped at safe thresholds (maximum 16 connections for large files, well below Telegram's connection ceiling).
 * 🏠 **Session Key Reuse:** Connections to your primary Data Center reuse your authenticated session `AuthKey` directly, avoiding suspicious repetitive auth exports.
 * 📁 **Zero Third-Party Relays:** All data streams point-to-point directly from your machine to official Telegram Data Centers. No intermediate proxies, tokens, or servers ever touch your files.
 

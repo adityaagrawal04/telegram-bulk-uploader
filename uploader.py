@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import math
+import random
 import shutil
 import asyncio
 import fnmatch
@@ -579,6 +580,7 @@ async def upload_file_with_retry(
                 break
             except errors.FloodWaitError as e:
                 print(f"\n[RATE LIMIT] Telegram requested a {e.seconds}s pause. Waiting...")
+                delay = min(delay + 1.0, 10.0)
                 await asyncio.sleep(e.seconds + 5)
             except (ConnectionError, asyncio.TimeoutError, OSError, errors.RPCError) as e:
                 if attempt == max_retries - 1:
@@ -599,6 +601,7 @@ async def upload_file_with_retry(
                 break
             except errors.FloodWaitError as e:
                 print(f"\n[RATE LIMIT] Telegram requested a {e.seconds}s pause on send_file. Waiting...")
+                delay = min(delay + 1.0, 10.0)
                 await asyncio.sleep(e.seconds + 5)
             except Exception as e:
                 if not force_document:
@@ -616,7 +619,9 @@ async def upload_file_with_retry(
             except Exception as del_err:
                 print(f"\n[WARN] Failed to delete {file_path}: {del_err}")
 
-        await asyncio.sleep(delay)
+        # Anti-ban human jitter: random variance to prevent mechanical pulse detection
+        jittered_delay = max(1.5, delay + random.uniform(0.1, 0.8))
+        await asyncio.sleep(jittered_delay)
 
     finally:
         if temp_thumb and os.path.exists(temp_thumb.name):
@@ -690,9 +695,14 @@ async def main():
 
         session_uploaded_count = 0
         for index, file_path in enumerate(all_files, start=1):
-            if session_uploaded_count > 0 and session_uploaded_count % 20 == 0:
-                print("\n[ANTI-FLOOD SHIELD] Pausing 8s after 20 files to maintain safe cadence and protect account...")
-                await asyncio.sleep(8)
+            # Anti-ban shield: Multi-tiered breathers for account longevity
+            if session_uploaded_count > 0:
+                if session_uploaded_count % 100 == 0:
+                    print(f"\n[ANTI-BAN SHIELD] Deep breather: pausing 35s after {session_uploaded_count} files for account safety...")
+                    await asyncio.sleep(35)
+                elif session_uploaded_count % 25 == 0:
+                    print(f"\n[ANTI-BAN SHIELD] Micro-breather: pausing 10s after {session_uploaded_count} files to keep cadence safe...")
+                    await asyncio.sleep(10)
 
             rel_path = os.path.relpath(file_path, args.source)
             st = os.stat(file_path)
