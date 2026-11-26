@@ -116,18 +116,45 @@ async def index():
 
 
 def _open_folder_dialog_native() -> str:
-    """Prompt the operating system native folder picker dialog using Tkinter."""
+    """Prompt the operating system native folder picker dialog using Tkinter or PowerShell."""
     try:
         import tkinter as tk
         from tkinter import filedialog
         root = tk.Tk()
         root.withdraw()
-        root.attributes("-topmost", True)
+        root.wm_attributes("-topmost", True)
         selected_path = filedialog.askdirectory(title="Select Folder to Upload")
         root.destroy()
-        return selected_path or ""
-    except Exception as e:
-        return ""
+        if selected_path:
+            return os.path.normpath(selected_path)
+    except Exception:
+        pass
+
+    # Windows fallback via PowerShell STA OpenFolder dialog
+    if sys.platform == "win32":
+        try:
+            ps_code = """
+            Add-Type -AssemblyName System.Windows.Forms
+            $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+            $dlg.Description = 'Select Folder to Upload'
+            $dlg.ShowNewFolderButton = $true
+            if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                Write-Output $dlg.SelectedPath
+            }
+            """
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Sta", "-Command", ps_code],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            out = result.stdout.strip()
+            if out and os.path.isdir(out):
+                return os.path.normpath(out)
+        except Exception:
+            pass
+
+    return ""
 
 
 @app.post("/api/choose-folder")

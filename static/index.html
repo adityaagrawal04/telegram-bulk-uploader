@@ -621,8 +621,8 @@
         <div class="field-wrap">
           <label>Local Directory Path</label>
           <div style="display: flex; gap: 8px;">
-            <input id="sourcePath" type="text" placeholder="Click 'Browse' or paste path (e.g. D:\Photos)" style="cursor: pointer;" onclick="pickFolder()" />
-            <button type="button" class="btn-subtle" onclick="pickFolder()" title="Open native File Explorer to pick a folder" style="padding: 10px 14px; white-space: nowrap; flex-shrink: 0;">
+            <input id="sourcePath" type="text" placeholder="Click 'Browse' or paste path (e.g. C:\Videos)" style="cursor: pointer;" onclick="pickFolder()" />
+            <button id="browseBtn" type="button" class="btn-subtle" onclick="pickFolder()" title="Open native File Explorer to pick a folder" style="padding: 10px 14px; white-space: nowrap; flex-shrink: 0;">
               📁 Browse
             </button>
           </div>
@@ -798,18 +798,27 @@
     }
 
     async function pickFolder(){
+      const btn = document.getElementById("browseBtn");
+      if (btn) btn.textContent = "⏳ Picking...";
       try {
         const res = await api("/api/choose-folder", "POST");
         if (res && res.path) {
           document.getElementById("sourcePath").value = res.path;
           scanFolder();
+          if (btn) btn.textContent = "📁 Browse";
           return;
         }
       } catch (e) {
-        // Fallback to HTML5 directory picker if backend dialog fails
+        console.error("Native folder dialog error:", e);
       }
-      const webkit = document.getElementById("webkitFolderInput");
-      if (webkit) webkit.click();
+      if (btn) btn.textContent = "📁 Browse";
+      // Fallback: prompt user for exact path if dialog cancelled or webkit only gives relative folder name
+      const current = document.getElementById("sourcePath").value;
+      const typed = prompt("Enter or paste full folder path (e.g. C:\\Users\\...\\Videos):", current.includes(":\\") ? current : "");
+      if (typed && typed.trim()) {
+        document.getElementById("sourcePath").value = typed.trim();
+        scanFolder();
+      }
     }
 
     function handleWebkitFolder(event){
