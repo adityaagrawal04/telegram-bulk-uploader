@@ -143,9 +143,18 @@ class TestWebApp(unittest.TestCase):
             state_path = os.path.join(tmpdir, "state.json")
             with patch.object(uploader, "STATE_FILE", state_path):
                 self.assertEqual(uploader.load_state(), set())
-                uploader.save_state({"album/a.jpg", "album/b.mp4"})
+                state = set()
+                key1 = uploader.make_state_key("me", "album/a.jpg", 100, 1700000000)
+                key2 = uploader.make_state_key("me", "album/b.mp4", 200, 1700000000)
+                state.add(key1)
+                state.add(key2)
+                uploader.save_state(state)
                 loaded = uploader.load_state()
-                self.assertEqual(loaded, {"album/a.jpg", "album/b.mp4"})
+                self.assertEqual(loaded, {key1, key2})
+                self.assertTrue(uploader.is_file_uploaded(loaded, "me", "album/a.jpg", 100, 1700000000))
+                # Different target or changed file size is not marked uploaded
+                self.assertFalse(uploader.is_file_uploaded(loaded, "-100123", "album/a.jpg", 100, 1700000000))
+                self.assertFalse(uploader.is_file_uploaded(loaded, "me", "album/a.jpg", 105, 1700000000))
 
     @unittest.skipUnless(
         shutil.which("ffmpeg") and shutil.which("ffprobe"),

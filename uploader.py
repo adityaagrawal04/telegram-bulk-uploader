@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import math
 import shutil
@@ -20,10 +21,14 @@ VIDEO_EXTENSIONS = {
     ".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv", ".wmv", ".m4v", ".ts", ".mts", ".m2ts"
 }
 
+# Conservative Telegram thresholds (2000 MiB / 4000 MiB)
+STANDARD_LIMIT = 2000 * 1024 * 1024
+PREMIUM_LIMIT = 4000 * 1024 * 1024
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Fault-tolerant CLI tool to bulk upload large local folders to Telegram."
+        description="The fastest, fault-tolerant CLI tool to bulk upload large local folders to Telegram."
     )
     parser.add_argument(
         "source",
@@ -43,7 +48,7 @@ def parse_args():
     parser.add_argument(
         "--premium",
         action="store_true",
-        help="Set max file size limit to 4GB (for Telegram Premium accounts) instead of 2GB",
+        help="Set max file size limit to 4000MB (for Telegram Premium accounts) instead of 2000MB",
     )
     parser.add_argument(
         "--ext",
@@ -61,6 +66,16 @@ def parse_args():
         "--split-large",
         action="store_true",
         help="Losslessly split video files exceeding the size limit into chunks using FFmpeg before uploading",
+    )
+    parser.add_argument(
+        "--delete-on-success",
+        action="store_true",
+        help="Delete local file after it has been successfully uploaded to Telegram",
+    )
+    parser.add_argument(
+        "--no-thumb",
+        action="store_true",
+        help="Disable automatic thumbnail generation for uploaded video files",
     )
     parser.add_argument(
         "--folders",
@@ -92,40 +107,60 @@ def parse_args():
         action="store_true",
         help="Interactively choose which folders and files to upload before starting",
     )
-    parser.add_argument(
-        "--delete-on-success",
-        action="store_true",
-        help="Delete local file after it has been successfully uploaded to Telegram",
-    )
-    parser.add_argument(
-        "--no-thumb",
-        action="store_true",
-        help="Disable automatic thumbnail generation for uploaded video files",
-    )
     return parser.parse_args()
 
 
-def load_state():
+def make_state_key(target: str, rel_path: str, size: int, mtime: float) -> str:
+    """Generate a collision-resistant unique key per target, file content size & mtime."""
+    posix_path = rel_path.replace("\\", "/")
+    return f"{target}::{posix_path}::{size}::{int(mtime)}"
+
+
+def load_state() -> set:
+    """Safely load uploaded state ledger supporting atomic JSON recovery."""
     if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return set(json.load(f))
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return set(data)
+        except Exception:
+            # Fallback for corrupted or empty state
+            return set()
     return set()
 
 
-def save_state(uploaded_set):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(list(uploaded_set), f, indent=2)
+def save_state(uploaded_set: set):
+    """Atomically save uploaded state using temporary file replacement."""
+    tmp_path = f"{STATE_FILE}.tmp.{os.getpid()}"
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(list(uploaded_set), f, indent=2)
+        os.replace(tmp_path, STATE_FILE)
+    except Exception as e:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+
+def is_file_uploaded(uploaded_set: set, target: str, rel_path: str, size: int, mtime: float) -> bool:
+    """Check if file was uploaded either with full key or backward-compatible relative path."""
+    full_key = make_state_key(target, rel_path, size, mtime)
+    if full_key in uploaded_set:
+        return True
+    posix_rel = rel_path.replace("\\", "/")
+    # Backward compatibility with older single-key records
+    return posix_rel in uploaded_set or rel_path in uploaded_set
 
 
 def _normalize_folder_filters(folders):
-    """Normalize folder filter strings to POSIX relative style."""
     if not folders:
         return None
     return [f.replace("\\", "/").strip("/") for f in folders if f.strip("/\\")]
 
 
 def _folder_matches(rel_dir, folder_filters):
-    """Return True if rel_dir matches any folder filter (exact, prefix, or segment)."""
     if rel_dir == ".":
         return "." in folder_filters
     parts = rel_dir.split("/")
@@ -136,7 +171,6 @@ def _folder_matches(rel_dir, folder_filters):
 
 
 def _matches_any_glob(file_name, rel_file, patterns):
-    """Return True if file_name or rel_file matches any glob pattern (case-insensitive)."""
     name_lower = file_name.lower()
     rel_lower = rel_file.lower()
     return any(
@@ -153,7 +187,7 @@ def get_all_files(
     include_patterns=None,
     exclude_patterns=None,
 ):
-    """Walk root_dir and return sorted file paths matching extension, folder, and glob filters."""
+    """Recursively walk directory, pruning hidden directories (.git, .Trash) and files."""
     file_list = []
     normalized_exts = (
         {ext.lower() if ext.startswith(".") else f".{ext.lower()}" for ext in allowed_exts}
@@ -164,6 +198,9 @@ def get_all_files(
     exc_folders = _normalize_folder_filters(exclude_folders)
 
     for root, dirs, files in os.walk(root_dir):
+        # Prune hidden directories (.git, .trash, dotfolders)
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d.lower() not in {"$recycle.bin", "system volume information"}]
+
         rel_dir = os.path.relpath(root, root_dir).replace("\\", "/")
         if exc_folders:
             dirs[:] = [
@@ -198,7 +235,6 @@ def get_all_files(
 
 
 def format_size(num_bytes):
-    """Format byte count as a human-readable string."""
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if num_bytes < 1024 or unit == "TB":
             return f"{num_bytes:.2f} {unit}" if unit != "B" else f"{num_bytes} B"
@@ -206,7 +242,6 @@ def format_size(num_bytes):
 
 
 def parse_selection_indices(raw_input, max_index):
-    """Parse 1-based selection input ('all', 'none', or '1,3-5') into sorted 0-based indices."""
     text = raw_input.strip().lower()
     if text in {"", "all", "*"}:
         return list(range(max_index))
@@ -233,7 +268,6 @@ def parse_selection_indices(raw_input, max_index):
 
 
 def _prompt_indices(prompt_text, max_index):
-    """Prompt until valid selection indices are entered."""
     while True:
         try:
             return parse_selection_indices(input(prompt_text), max_index)
@@ -242,7 +276,6 @@ def _prompt_indices(prompt_text, max_index):
 
 
 def interactive_select_files(root_dir, file_list):
-    """Interactively let the user select folders and optionally individual files."""
     if not file_list:
         return []
 
@@ -286,16 +319,27 @@ def interactive_select_files(root_dir, file_list):
     return [selected_files[i] for i in chosen_file_idxs]
 
 
-def log_skipped_file(rel_path, file_size, limit_gb, reason=None):
-    """Log a skipped oversized file to stdout and SKIPPED_LOG."""
+def log_skipped_file(rel_path, file_size, limit_mb, reason=None):
+    """Log skipped file without repeating duplicates in SKIPPED_LOG."""
     suffix = f" ({reason})" if reason else ""
-    print(f"[SKIPPED > {limit_gb}GB] {rel_path} ({file_size / (1024**3):.2f} GB){suffix}")
-    with open(SKIPPED_LOG, "a", encoding="utf-8") as log:
-        log.write(f"{rel_path} - {file_size / (1024**3):.2f} GB{suffix}\n")
+    posix_path = rel_path.replace("\\", "/")
+    print(f"[SKIPPED > {limit_mb}MB] {posix_path} ({file_size / (1024**2):.1f} MB){suffix}")
+    line_entry = f"{posix_path} - {file_size / (1024**2):.1f} MB{suffix}\n"
+
+    existing = set()
+    if os.path.exists(SKIPPED_LOG):
+        try:
+            with open(SKIPPED_LOG, "r", encoding="utf-8") as f:
+                existing = set(f.readlines())
+        except Exception:
+            pass
+
+    if line_entry not in existing:
+        with open(SKIPPED_LOG, "a", encoding="utf-8") as log:
+            log.write(line_entry)
 
 
 def get_video_duration(file_path):
-    """Return video duration in seconds using ffprobe."""
     result = subprocess.run(
         [
             "ffprobe",
@@ -314,58 +358,7 @@ def get_video_duration(file_path):
     return float(result.stdout.strip())
 
 
-def split_video_file(file_path, output_dir, max_file_size):
-    """Losslessly split a video file into chunks under max_file_size using FFmpeg."""
-    file_size = os.path.getsize(file_path)
-    duration = get_video_duration(file_path)
-    if duration <= 0:
-        raise ValueError(f"Invalid video duration ({duration}s) for {file_path}")
-
-    # Target 90% of max_file_size per chunk to leave headroom for keyframe alignment and VBR spikes
-    target_chunk_size = int(max_file_size * 0.90)
-    num_chunks = max(2, math.ceil(file_size / target_chunk_size))
-    segment_time = max(1, int(duration / num_chunks))
-
-    stem, ext = os.path.splitext(os.path.basename(file_path))
-    output_pattern = os.path.join(output_dir, f"{stem}_part%03d{ext}")
-
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-i",
-            file_path,
-            "-c",
-            "copy",
-            "-map",
-            "0:v?",
-            "-map",
-            "0:a?",
-            "-map",
-            "0:s?",
-            "-f",
-            "segment",
-            "-segment_time",
-            str(segment_time),
-            "-reset_timestamps",
-            "1",
-            output_pattern,
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-
-    chunks = sorted(
-        os.path.join(output_dir, name)
-        for name in os.listdir(output_dir)
-        if os.path.isfile(os.path.join(output_dir, name))
-    )
-    return chunks
-
-
 def generate_video_thumbnail(video_path, out_thumb_path):
-    """Generate a crisp video thumbnail at 1s timestamp using FFmpeg."""
     if not shutil.which("ffmpeg"):
         return None
     try:
@@ -394,10 +387,76 @@ def generate_video_thumbnail(video_path, out_thumb_path):
     return None
 
 
+def split_video_file(file_path, output_dir, max_file_size, attempt=1):
+    """
+    Split a video into lossless chunks with clean audio/video stream selection,
+    retrying with tighter segment intervals if variable bitrate exceeds limits.
+    """
+    file_size = os.path.getsize(file_path)
+    duration = get_video_duration(file_path)
+    if duration <= 0:
+        raise ValueError(f"Invalid video duration ({duration}s) for {file_path}")
+
+    # Use progressively tighter headroom on attempts (85%, 75%, 65%)
+    headroom = max(0.50, 0.85 - (attempt - 1) * 0.10)
+    target_chunk_size = int(max_file_size * headroom)
+    num_chunks = max(2, math.ceil(file_size / target_chunk_size))
+    segment_time = max(1, int(duration / num_chunks))
+
+    stem, ext = os.path.splitext(os.path.basename(file_path))
+    output_pattern = os.path.join(output_dir, f"{stem}_part%03d{ext}")
+
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            file_path,
+            "-c",
+            "copy",
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a?",
+            "-f",
+            "segment",
+            "-segment_time",
+            str(segment_time),
+            "-reset_timestamps",
+            "1",
+            output_pattern,
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    chunks = sorted(
+        os.path.join(output_dir, name)
+        for name in os.listdir(output_dir)
+        if os.path.isfile(os.path.join(output_dir, name))
+    )
+
+    # If any chunk still overshoots, retry with smaller segment_time up to 3 times
+    oversized = [c for c in chunks if os.path.getsize(c) > max_file_size]
+    if oversized and attempt < 3:
+        for c in chunks:
+            try:
+                os.remove(c)
+            except Exception:
+                pass
+        return split_video_file(file_path, output_dir, max_file_size, attempt=attempt + 1)
+
+    return chunks
+
+
 async def upload_file_with_retry(
-    client, target, file_path, caption, force_document, delay, desc_label, rel_path, delete_on_success=False, no_thumb=False
+    client, target, file_path, caption, force_document, delay, desc_label, rel_path, delete_on_success=False, no_thumb=False, max_retries=5
 ):
-    """Upload a single file with fast parallel chunks, optional thumbnail, tqdm progress bar, and FloodWait/error retries."""
+    """
+    Upload a single file with fast parallel chunks.
+    Only retries transient network errors or FloodWait. Distinguishes upload phase from send phase.
+    """
     file_size = os.path.getsize(file_path)
     _, ext = os.path.splitext(file_path)
     thumb_path = None
@@ -408,27 +467,40 @@ async def upload_file_with_retry(
         temp_thumb.close()
         thumb_path = generate_video_thumbnail(file_path, temp_thumb.name)
 
-    while True:
-        try:
-            with tqdm(
-                total=file_size,
-                unit="B",
-                unit_scale=True,
-                desc=desc_label,
-            ) as pbar:
+    try:
+        # Phase 1: Upload chunks to Telegram server
+        uploaded_input = None
+        for attempt in range(max_retries):
+            try:
+                with tqdm(
+                    total=file_size,
+                    unit="B",
+                    unit_scale=True,
+                    desc=desc_label,
+                ) as pbar:
+                    def progress_callback(current, total):
+                        pbar.n = current
+                        pbar.refresh()
 
-                def progress_callback(current, total):
-                    pbar.n = current
-                    pbar.refresh()
+                    uploaded_input = await fast_upload_file(
+                        client,
+                        file_path,
+                        progress_callback=progress_callback,
+                        max_workers=16
+                    )
+                break
+            except errors.FloodWaitError as e:
+                print(f"\n[RATE LIMIT] Telegram requested a {e.seconds}s pause. Waiting...")
+                await asyncio.sleep(e.seconds + 5)
+            except (ConnectionError, asyncio.TimeoutError, OSError, errors.RPCError) as e:
+                if attempt == max_retries - 1:
+                    raise RuntimeError(f"Gave up uploading chunks for {rel_path}: {e}")
+                print(f"\n[NETWORK] Transient chunk failure on {rel_path} ({e}). Retry {attempt+1}/{max_retries} in 5s...")
+                await asyncio.sleep(5)
 
-                # Fast parallel multipart upload (16 workers)
-                uploaded_input = await fast_upload_file(
-                    client,
-                    file_path,
-                    progress_callback=progress_callback,
-                    max_workers=16
-                )
-
+        # Phase 2: Send file message (re-using pre-uploaded input so chunks are never re-sent!)
+        for attempt in range(max_retries):
+            try:
                 await client.send_file(
                     target,
                     uploaded_input,
@@ -436,28 +508,30 @@ async def upload_file_with_retry(
                     force_document=force_document,
                     thumb=thumb_path if thumb_path and os.path.exists(thumb_path) else None,
                 )
+                break
+            except errors.FloodWaitError as e:
+                print(f"\n[RATE LIMIT] Telegram requested a {e.seconds}s pause on send_file. Waiting...")
+                await asyncio.sleep(e.seconds + 5)
+            except (ConnectionError, asyncio.TimeoutError, OSError, errors.RPCError) as e:
+                if attempt == max_retries - 1:
+                    raise RuntimeError(f"Gave up sending file message for {rel_path}: {e}")
+                print(f"\n[NETWORK] Transient message delivery failure on {rel_path} ({e}). Retrying in 5s...")
+                await asyncio.sleep(5)
 
-            if delete_on_success:
-                try:
-                    os.remove(file_path)
-                except Exception as del_err:
-                    print(f"\n[WARN] Failed to delete {file_path} after upload: {del_err}")
+        if delete_on_success:
+            try:
+                os.remove(file_path)
+            except Exception as del_err:
+                print(f"\n[WARN] Failed to delete {file_path}: {del_err}")
 
-            if temp_thumb and os.path.exists(temp_thumb.name):
-                try:
-                    os.remove(temp_thumb.name)
-                except Exception:
-                    pass
+        await asyncio.sleep(delay)
 
-            await asyncio.sleep(delay)
-            return
-
-        except errors.FloodWaitError as e:
-            print(f"\n[RATE LIMIT] Telegram requested a {e.seconds}s pause. Waiting...")
-            await asyncio.sleep(e.seconds + 5)
-        except Exception as e:
-            print(f"\n[ERROR] Failed uploading {rel_path}: {e}. Retrying in 10s...")
-            await asyncio.sleep(10)
+    finally:
+        if temp_thumb and os.path.exists(temp_thumb.name):
+            try:
+                os.remove(temp_thumb.name)
+            except Exception:
+                pass
 
 
 async def main():
@@ -480,126 +554,145 @@ async def main():
             "FFmpeg and ffprobe are required for --split-large. Install FFmpeg and ensure it is on your PATH."
         )
 
-    max_file_size = (4 if args.premium else 2) * 1024 * 1024 * 1024
-    limit_gb = 4 if args.premium else 2
+    max_file_size = PREMIUM_LIMIT if args.premium else STANDARD_LIMIT
+    limit_mb = 4000 if args.premium else 2000
     force_document = not args.compress
     chat_target = int(args.target) if args.target.lstrip("-").isdigit() else args.target
-
-    all_files = get_all_files(
-        args.source,
-        allowed_exts=args.ext,
-        include_folders=args.folders,
-        exclude_folders=args.exclude_folders,
-        include_patterns=args.include,
-        exclude_patterns=args.exclude,
-    )
-    if args.select:
-        all_files = interactive_select_files(args.source, all_files)
-
-    if not all_files:
-        print("No matching files selected for upload.")
-        return
 
     client = TelegramClient("telegram_uploader_session", int(api_id), api_hash)
     await client.start(phone=phone)
     print("Connected to Telegram successfully.")
 
-    target = await client.get_input_entity(chat_target)
-    uploaded_files = load_state()
-    remaining_count = sum(
-        1 for f in all_files if os.path.relpath(f, args.source) not in uploaded_files
-    )
+    try:
+        # Pre-warm dialog entity cache so numeric IDs (-100...) resolve reliably
+        await client.get_dialogs(limit=30)
+        target = await client.get_input_entity(chat_target)
+        target_str = str(chat_target)
 
-    print(f"Total matching files: {len(all_files)}")
-    print(f"Already uploaded:     {len(all_files) - remaining_count}")
-    print(f"Remaining to upload:  {remaining_count}\n")
+        uploaded_files = load_state()
+        all_files = get_all_files(
+            args.source,
+            allowed_exts=args.ext,
+            include_folders=args.folders,
+            exclude_folders=args.exclude_folders,
+            include_patterns=args.include,
+            exclude_patterns=args.exclude,
+        )
+        if args.select:
+            all_files = interactive_select_files(args.source, all_files)
 
-    for index, file_path in enumerate(all_files, start=1):
-        rel_path = os.path.relpath(file_path, args.source)
+        if not all_files:
+            print("No matching files selected for upload.")
+            return
 
-        if rel_path in uploaded_files:
-            continue
+        remaining_files = []
+        for f in all_files:
+            rel = os.path.relpath(f, args.source)
+            st = os.stat(f)
+            if not is_file_uploaded(uploaded_files, target_str, rel, st.st_size, st.st_mtime):
+                remaining_files.append(f)
 
-        file_size = os.path.getsize(file_path)
+        print(f"Total matching files: {len(all_files)}")
+        print(f"Already uploaded:     {len(all_files) - len(remaining_files)}")
+        print(f"Remaining to upload:  {len(remaining_files)}\n")
 
-        if file_size == 0:
-            continue
+        for index, file_path in enumerate(all_files, start=1):
+            rel_path = os.path.relpath(file_path, args.source)
+            st = os.stat(file_path)
+            file_size = st.st_size
+            file_mtime = st.st_mtime
 
-        folder_name = os.path.basename(os.path.dirname(file_path))
-        file_name = os.path.basename(file_path)
-        _, ext = os.path.splitext(file_name)
-
-        if file_size > max_file_size:
-            if not args.split_large or ext.lower() not in VIDEO_EXTENSIONS:
-                reason = "not a supported video" if args.split_large else None
-                log_skipped_file(rel_path, file_size, limit_gb, reason)
+            if is_file_uploaded(uploaded_files, target_str, rel_path, file_size, file_mtime):
                 continue
 
-            print(f"[SPLITTING > {limit_gb}GB] {rel_path} ({file_size / (1024**3):.2f} GB)...")
-            with tempfile.TemporaryDirectory() as tmpdir:
-                try:
-                    chunks = split_video_file(file_path, tmpdir, max_file_size)
-                except Exception as e:
-                    log_skipped_file(rel_path, file_size, limit_gb, f"split failed: {e}")
+            if file_size == 0:
+                continue
+
+            folder_name = os.path.basename(os.path.dirname(file_path))
+            file_name = os.path.basename(file_path)
+            _, ext = os.path.splitext(file_name)
+
+            if file_size > max_file_size:
+                if not args.split_large or ext.lower() not in VIDEO_EXTENSIONS:
+                    reason = "not a supported video" if args.split_large else None
+                    log_skipped_file(rel_path, file_size, limit_mb, reason)
                     continue
 
-                oversized_chunks = [c for c in chunks if os.path.getsize(c) > max_file_size]
-                if not chunks or oversized_chunks:
-                    log_skipped_file(
-                        rel_path,
-                        file_size,
-                        limit_gb,
-                        "chunk still exceeds size limit after splitting",
-                    )
-                    continue
+                print(f"[SPLITTING > {limit_mb}MB] {rel_path} ({file_size / (1024**2):.1f} MB)...")
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    try:
+                        chunks = split_video_file(file_path, tmpdir, max_file_size)
+                    except Exception as e:
+                        log_skipped_file(rel_path, file_size, limit_mb, f"split failed: {e}")
+                        continue
 
-                total_parts = len(chunks)
-                for part_idx, chunk_path in enumerate(chunks, start=1):
-                    chunk_caption = f"📁 {folder_name}\n📄 {file_name} (Part {part_idx}/{total_parts})"
-                    desc_label = f"[{index}/{len(all_files)}] {file_name[:18]} ({part_idx}/{total_parts})"
-                    await upload_file_with_retry(
-                        client,
-                        target,
-                        chunk_path,
-                        chunk_caption,
-                        force_document,
-                        args.delay,
-                        desc_label,
-                        f"{rel_path} [part {part_idx}/{total_parts}]",
-                        delete_on_success=False,
-                        no_thumb=args.no_thumb,
-                    )
+                    oversized_chunks = [c for c in chunks if os.path.getsize(c) > max_file_size]
+                    if not chunks or oversized_chunks:
+                        log_skipped_file(
+                            rel_path,
+                            file_size,
+                            limit_mb,
+                            "chunk exceeds size limit after splitting",
+                        )
+                        continue
 
-            if args.delete_on_success:
-                try:
-                    os.remove(file_path)
-                except Exception:
-                    pass
+                    total_parts = len(chunks)
+                    for part_idx, chunk_path in enumerate(chunks, start=1):
+                        part_rel_key = f"{rel_path}::part{part_idx}_of_{total_parts}"
+                        chunk_size = os.path.getsize(chunk_path)
+                        # Part-level state tracking: skips already sent parts on interrupted resumes!
+                        if is_file_uploaded(uploaded_files, target_str, part_rel_key, chunk_size, file_mtime):
+                            continue
 
-            uploaded_files.add(rel_path)
+                        chunk_caption = f"📁 {folder_name}\n📄 {file_name} (Part {part_idx}/{total_parts})"
+                        desc_label = f"[{index}/{len(all_files)}] {file_name[:18]} ({part_idx}/{total_parts})"
+                        await upload_file_with_retry(
+                            client,
+                            target,
+                            chunk_path,
+                            chunk_caption,
+                            force_document,
+                            args.delay,
+                            desc_label,
+                            f"{rel_path} [part {part_idx}/{total_parts}]",
+                            delete_on_success=False,
+                            no_thumb=args.no_thumb,
+                        )
+                        # Immediately record part state
+                        uploaded_files.add(make_state_key(target_str, part_rel_key, chunk_size, file_mtime))
+                        save_state(uploaded_files)
+
+                if args.delete_on_success:
+                    try:
+                        os.remove(file_path)
+                    except Exception:
+                        pass
+
+                uploaded_files.add(make_state_key(target_str, rel_path, file_size, file_mtime))
+                save_state(uploaded_files)
+                continue
+
+            caption = f"📁 {folder_name}\n📄 {file_name}"
+            desc_label = f"[{index}/{len(all_files)}] {file_name[:25]}"
+            await upload_file_with_retry(
+                client,
+                target,
+                file_path,
+                caption,
+                force_document,
+                args.delay,
+                desc_label,
+                rel_path,
+                delete_on_success=args.delete_on_success,
+                no_thumb=args.no_thumb,
+            )
+
+            uploaded_files.add(make_state_key(target_str, rel_path, file_size, file_mtime))
             save_state(uploaded_files)
-            continue
 
-        caption = f"📁 {folder_name}\n📄 {file_name}"
-        desc_label = f"[{index}/{len(all_files)}] {file_name[:25]}"
-        await upload_file_with_retry(
-            client,
-            target,
-            file_path,
-            caption,
-            force_document,
-            args.delay,
-            desc_label,
-            rel_path,
-            delete_on_success=args.delete_on_success,
-            no_thumb=args.no_thumb,
-        )
-
-        uploaded_files.add(rel_path)
-        save_state(uploaded_files)
-
-    print("\nUpload queue complete!")
-    await client.disconnect()
+        print("\nUpload queue complete!")
+    finally:
+        await client.disconnect()
 
 
 if __name__ == "__main__":

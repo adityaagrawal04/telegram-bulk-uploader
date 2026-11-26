@@ -328,8 +328,8 @@ async def browse_folder(req: BrowseRequest):
     }
 
 
-async def _send_with_progress(client, target, file_path, caption, force_document, delay, label):
-    """Upload a single file with fast parallel workers and live progress updates on UploadState."""
+async def _send_with_progress(client, target, file_path, caption, force_document, delay, label, delete_on_success=False, max_retries=5):
+    """Upload a single file with fast parallel workers, capped retries, and decoupled send_file retries."""
     file_size = os.path.getsize(file_path)
     state.current_file = label
     state.current_bytes = 0
@@ -338,49 +338,68 @@ async def _send_with_progress(client, target, file_path, caption, force_document
     state.eta_seconds = 0
     start_time = asyncio.get_event_loop().time()
 
-    while True:
-        try:
-            def progress_cb(current, total):
-                now = asyncio.get_event_loop().time()
-                elapsed = max(0.001, now - start_time)
-                state.current_bytes = current
-                state.current_total_bytes = total or file_size
-                # Transfer speed in Megabytes per second
-                speed = (current / (1024 * 1024)) / elapsed
-                state.speed_mbps = round(speed, 2)
-                rem_bytes = max(0, (total or file_size) - current)
-                if speed > 0:
-                    state.eta_seconds = int(rem_bytes / (speed * 1024 * 1024))
+    def progress_cb(current, total):
+        now = asyncio.get_event_loop().time()
+        elapsed = max(0.001, now - start_time)
+        state.current_bytes = current
+        state.current_total_bytes = total or file_size
+        speed = (current / (1024 * 1024)) / elapsed
+        state.speed_mbps = round(speed, 2)
+        rem_bytes = max(0, (total or file_size) - current)
+        if speed > 0:
+            state.eta_seconds = int(rem_bytes / (speed * 1024 * 1024))
 
-            # Turbocharged 16-worker parallel upload
+    # Phase 1: Upload chunks
+    uploaded_input = None
+    for attempt in range(max_retries):
+        try:
             uploaded_input = await fast_upload_file(
                 client,
                 file_path,
                 progress_callback=progress_cb,
                 max_workers=16
             )
+            break
+        except errors.FloodWaitError as e:
+            state.log(f"[RATE LIMIT] FloodWait {e.seconds}s — pausing...")
+            state.status_message = f"Rate limited ({e.seconds}s)"
+            await asyncio.sleep(e.seconds + 5)
+        except (ConnectionError, asyncio.TimeoutError, OSError, errors.RPCError) as e:
+            if attempt == max_retries - 1:
+                raise RuntimeError(f"Gave up uploading chunks for {label}: {e}")
+            state.log(f"[NETWORK] Transient chunk failure ({e}). Retry {attempt+1}/{max_retries}...")
+            await asyncio.sleep(5)
 
+    # Phase 2: Send message using cached uploaded_input
+    for attempt in range(max_retries):
+        try:
             await client.send_file(
                 target,
                 uploaded_input,
                 caption=caption,
                 force_document=force_document,
             )
-            await asyncio.sleep(delay)
-            return
+            break
         except errors.FloodWaitError as e:
-            state.log(f"[RATE LIMIT] FloodWait {e.seconds}s — pausing...")
-            state.status_message = f"Rate limited ({e.seconds}s cooldown)"
+            state.log(f"[RATE LIMIT] FloodWait {e.seconds}s on message send...")
             await asyncio.sleep(e.seconds + 5)
-        except asyncio.CancelledError:
-            raise
+        except (ConnectionError, asyncio.TimeoutError, OSError, errors.RPCError) as e:
+            if attempt == max_retries - 1:
+                raise RuntimeError(f"Gave up sending message for {label}: {e}")
+            await asyncio.sleep(5)
+
+    if delete_on_success:
+        try:
+            os.remove(file_path)
+            state.log(f"[DELETED LOCAL] {label}")
         except Exception as e:
-            state.log(f"[ERROR] {label}: {e}. Retrying in 10s...")
-            await asyncio.sleep(10)
+            state.log(f"[WARN] Failed to delete {label}: {e}")
+
+    await asyncio.sleep(delay)
 
 
 async def _run_background_upload(req: UploadStartRequest):
-    """Background asyncio worker for uploading selected files."""
+    """Background asyncio worker with hardened error boundaries and per-part state tracking."""
     state.running = True
     state.completed_files = 0
     state.skipped_files = 0
@@ -407,20 +426,27 @@ async def _run_background_upload(req: UploadStartRequest):
         state.log(f"Started background upload: {len(all_files)} file(s) -> {req.target}")
 
         chat_target = int(req.target) if req.target.lstrip("-").isdigit() else req.target
+        # Pre-warm dialog entity cache
+        await client.get_dialogs(limit=30)
         target = await client.get_input_entity(chat_target)
+        target_str = str(chat_target)
+
         uploaded_files = uploader.load_state()
-        max_file_size = (4 if req.premium else 2) * 1024 * 1024 * 1024
-        limit_gb = 4 if req.premium else 2
+        max_file_size = uploader.PREMIUM_LIMIT if req.premium else uploader.STANDARD_LIMIT
+        limit_mb = 4000 if req.premium else 2000
         force_document = not req.compress
 
         for file_path in all_files:
             rel_path = os.path.relpath(file_path, source)
-            if rel_path in uploaded_files:
+            st = os.stat(file_path)
+            file_size = st.st_size
+            file_mtime = st.st_mtime
+
+            if uploader.is_file_uploaded(uploaded_files, target_str, rel_path, file_size, file_mtime):
                 state.completed_files += 1
                 state.log(f"[SKIPPED - ALREADY UPLOADED] {rel_path}")
                 continue
 
-            file_size = os.path.getsize(file_path)
             if file_size == 0:
                 state.skipped_files += 1
                 continue
@@ -432,31 +458,36 @@ async def _run_background_upload(req: UploadStartRequest):
             if file_size > max_file_size:
                 if not req.split_large or ext.lower() not in uploader.VIDEO_EXTENSIONS:
                     reason = "not a supported video" if req.split_large else None
-                    uploader.log_skipped_file(rel_path, file_size, limit_gb, reason)
-                    state.log(f"[SKIPPED > {limit_gb}GB] {rel_path}")
+                    uploader.log_skipped_file(rel_path, file_size, limit_mb, reason)
+                    state.log(f"[SKIPPED > {limit_mb}MB] {rel_path}")
                     state.skipped_files += 1
                     continue
 
                 state.status_message = f"Splitting {file_name} with FFmpeg..."
-                state.log(f"[SPLITTING > {limit_gb}GB] {rel_path}...")
+                state.log(f"[SPLITTING > {limit_mb}MB] {rel_path}...")
                 with tempfile.TemporaryDirectory() as tmpdir:
                     try:
                         chunks = await asyncio.to_thread(
                             uploader.split_video_file, file_path, tmpdir, max_file_size
                         )
                     except Exception as e:
-                        uploader.log_skipped_file(rel_path, file_size, limit_gb, f"split failed: {e}")
+                        uploader.log_skipped_file(rel_path, file_size, limit_mb, f"split failed: {e}")
                         state.log(f"[SPLIT FAILED] {rel_path}: {e}")
                         state.skipped_files += 1
                         continue
 
                     if not chunks or any(os.path.getsize(c) > max_file_size for c in chunks):
-                        state.log(f"[SKIPPED] Split chunks still exceed {limit_gb}GB: {rel_path}")
+                        state.log(f"[SKIPPED] Split chunks still exceed {limit_mb}MB: {rel_path}")
                         state.skipped_files += 1
                         continue
 
                     total_parts = len(chunks)
                     for idx, chunk_path in enumerate(chunks, start=1):
+                        part_rel_key = f"{rel_path}::part{idx}_of_{total_parts}"
+                        chunk_size = os.path.getsize(chunk_path)
+                        if uploader.is_file_uploaded(uploaded_files, target_str, part_rel_key, chunk_size, file_mtime):
+                            continue
+
                         caption = f"📁 {folder_name}\n📄 {file_name} (Part {idx}/{total_parts})"
                         state.status_message = f"Uploading {file_name} (Part {idx}/{total_parts})"
                         await _send_with_progress(
@@ -467,9 +498,19 @@ async def _run_background_upload(req: UploadStartRequest):
                             force_document,
                             req.delay,
                             f"{rel_path} (Part {idx}/{total_parts})",
+                            delete_on_success=False
                         )
+                        uploaded_files.add(uploader.make_state_key(target_str, part_rel_key, chunk_size, file_mtime))
+                        uploader.save_state(uploaded_files)
 
-                uploaded_files.add(rel_path)
+                if req.delete_on_success:
+                    try:
+                        os.remove(file_path)
+                        state.log(f"[DELETED LOCAL] {rel_path}")
+                    except Exception:
+                        pass
+
+                uploaded_files.add(uploader.make_state_key(target_str, rel_path, file_size, file_mtime))
                 uploader.save_state(uploaded_files)
                 state.completed_files += 1
                 state.log(f"[UPLOADED SPLIT] {rel_path}")
@@ -478,15 +519,9 @@ async def _run_background_upload(req: UploadStartRequest):
             caption = f"📁 {folder_name}\n📄 {file_name}"
             state.status_message = f"Uploading {file_name}"
             await _send_with_progress(
-                client, target, file_path, caption, force_document, req.delay, rel_path
+                client, target, file_path, caption, force_document, req.delay, rel_path, delete_on_success=req.delete_on_success
             )
-            if req.delete_on_success:
-                try:
-                    os.remove(file_path)
-                    state.log(f"[DELETED LOCAL] {rel_path}")
-                except Exception as del_err:
-                    state.log(f"[WARN] Failed to delete {rel_path}: {del_err}")
-            uploaded_files.add(rel_path)
+            uploaded_files.add(uploader.make_state_key(target_str, rel_path, file_size, file_mtime))
             uploader.save_state(uploaded_files)
             state.completed_files += 1
             state.log(f"[UPLOADED] {rel_path}")
