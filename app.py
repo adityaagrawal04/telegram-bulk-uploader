@@ -384,9 +384,8 @@ async def _send_with_progress(client, target, file_path, caption, force_document
             state.log(f"[RATE LIMIT] FloodWait {e.seconds}s on message send...")
             await asyncio.sleep(e.seconds + 5)
         except Exception as e:
-            err_msg = str(e).lower()
-            if not force_document and ("cannot be saved by telegram" in err_msg or "exceeds 10mb" in err_msg or "media_invalid" in err_msg):
-                state.log(f"[AUTO-FALLBACK] Image exceeds Telegram's 10MB photo cap. Retrying as uncompressed document...")
+            if not force_document:
+                state.log(f"[AUTO-FALLBACK] Photo rejected by Telegram ({e}). Retrying as uncompressed document...")
                 force_document = True
                 continue
             if attempt == max_retries - 1:
@@ -537,14 +536,12 @@ async def _run_background_upload(req: UploadStartRequest):
 
             compressed_temp = None
             upload_target_path = file_path
-            if req.compress and ext.lower() in uploader.IMAGE_EXTENSIONS and file_size > uploader.MAX_IMAGE_COMPRESSED_SIZE:
-                state.status_message = f"Compressing {file_name} < 9MB..."
-                state.log(f"[COMPRESSING] {rel_path} ({file_size / (1024*1024):.1f}MB -> < 9MB)...")
+            if req.compress and ext.lower() in uploader.IMAGE_EXTENSIONS:
                 comp = await asyncio.to_thread(uploader.compress_image_below_limit, file_path)
                 if comp and os.path.exists(comp):
                     compressed_temp = comp
                     upload_target_path = comp
-                    state.log(f"[COMPRESSED] {file_name} reduced to {os.path.getsize(comp) / (1024*1024):.2f}MB (< 9MB)")
+                    state.log(f"[COMPRESSED] {file_name} -> {os.path.getsize(comp) / (1024*1024):.2f}MB (Telegram Photo compliant)")
 
             try:
                 await _send_with_progress(

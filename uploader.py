@@ -396,21 +396,21 @@ def is_ffmpeg_available():
     return bool(shutil.which("ffmpeg"))
 
 
-def compress_image_below_limit(file_path, output_dir=None, max_bytes=MAX_IMAGE_COMPRESSED_SIZE):
+def compress_image_below_limit(file_path, output_dir=None, max_bytes=MAX_IMAGE_COMPRESSED_SIZE, max_dim=2560):
     """
-    Compress an image to ensure its file size is strictly less than max_bytes (default 9MB).
-    If the image is already <= max_bytes, returns None (no compression needed).
-    Uses Pillow if available, with robust FFmpeg fallback.
+    Compress an image to ensure:
+    1. Maximum dimension does not exceed max_dim (default 2560px for Telegram Photo compliance).
+    2. File size is strictly less than max_bytes (default 9MB).
+    Uses Pillow with high-quality resampling and EXIF orientation preservation, with FFmpeg fallback.
     """
     if not os.path.exists(file_path):
-        return None
-    file_size = os.path.getsize(file_path)
-    if file_size <= max_bytes:
         return None
 
     _, ext = os.path.splitext(file_path)
     if ext.lower() not in IMAGE_EXTENSIONS:
         return None
+
+    file_size = os.path.getsize(file_path)
 
     if output_dir is None:
         output_dir = tempfile.gettempdir()
@@ -421,23 +421,41 @@ def compress_image_below_limit(file_path, output_dir=None, max_bytes=MAX_IMAGE_C
 
     # Method 1: Try Pillow if available
     try:
-        from PIL import Image
+        from PIL import Image, ImageOps
         with Image.open(file_path) as img:
+            try:
+                img = ImageOps.exif_transpose(img)
+            except Exception:
+                pass
+
+            needs_resize = img.width > max_dim or img.height > max_dim
+            needs_compress = file_size > max_bytes
+
+            if not needs_resize and not needs_compress:
+                return None
+
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
+
+            if needs_resize:
+                img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+
             for quality in [85, 75, 65, 50, 35]:
                 img.save(out_path, format="JPEG", quality=quality, optimize=True)
                 if os.path.getsize(out_path) <= max_bytes:
                     return out_path
+
+            # Progressively scale down further if still > max_bytes
             w, h = img.size
             scale = 0.8
             while scale >= 0.25:
                 new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
                 resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                resized.save(out_path, format="JPEG", quality=75, optimize=True)
+                resized.save(out_path, format="JPEG", quality=70, optimize=True)
                 if os.path.getsize(out_path) <= max_bytes:
                     return out_path
                 scale -= 0.15
+
             if os.path.exists(out_path):
                 return out_path
     except Exception:
@@ -445,13 +463,9 @@ def compress_image_below_limit(file_path, output_dir=None, max_bytes=MAX_IMAGE_C
 
     # Method 2: FFmpeg fallback
     if is_ffmpeg_available():
+        scale_filter = f"scale='min({max_dim},iw)':'min({max_dim},ih)':force_original_aspect_ratio=decrease"
         for q in [3, 5, 8, 12]:
-            cmd = ["ffmpeg", "-y", "-i", file_path, "-q:v", str(q), "-frames:v", "1", out_path]
-            res = subprocess.run(cmd, capture_output=True)
-            if res.returncode == 0 and os.path.exists(out_path) and os.path.getsize(out_path) <= max_bytes:
-                return out_path
-        for scale in ["scale=iw*0.75:-2", "scale=iw*0.5:-2", "scale=iw*0.35:-2"]:
-            cmd = ["ffmpeg", "-y", "-i", file_path, "-vf", scale, "-q:v", "5", "-frames:v", "1", out_path]
+            cmd = ["ffmpeg", "-y", "-i", file_path, "-vf", scale_filter, "-q:v", str(q), "-frames:v", "1", out_path]
             res = subprocess.run(cmd, capture_output=True)
             if res.returncode == 0 and os.path.exists(out_path) and os.path.getsize(out_path) <= max_bytes:
                 return out_path
@@ -587,9 +601,8 @@ async def upload_file_with_retry(
                 print(f"\n[RATE LIMIT] Telegram requested a {e.seconds}s pause on send_file. Waiting...")
                 await asyncio.sleep(e.seconds + 5)
             except Exception as e:
-                err_msg = str(e).lower()
-                if not force_document and ("cannot be saved by telegram" in err_msg or "exceeds 10mb" in err_msg or "media_invalid" in err_msg):
-                    print(f"\n[AUTO-FALLBACK] Image exceeds Telegram's 10MB photo cap. Retrying as uncompressed document...")
+                if not force_document:
+                    print(f"\n[AUTO-FALLBACK] Photo rejected by Telegram ({e}). Retrying as uncompressed document...")
                     force_document = True
                     continue
                 if attempt == max_retries - 1:
@@ -762,13 +775,12 @@ async def main():
 
             compressed_temp = None
             upload_target_path = file_path
-            if args.compress and ext.lower() in IMAGE_EXTENSIONS and file_size > MAX_IMAGE_COMPRESSED_SIZE:
-                print(f"[COMPRESSING] {file_name} ({file_size / (1024*1024):.1f}MB -> < 9MB)...")
+            if args.compress and ext.lower() in IMAGE_EXTENSIONS:
                 comp = compress_image_below_limit(file_path)
                 if comp and os.path.exists(comp):
                     compressed_temp = comp
                     upload_target_path = comp
-                    print(f"[COMPRESSED] Successfully reduced to {os.path.getsize(comp) / (1024*1024):.2f}MB (< 9MB)")
+                    print(f"[COMPRESSED] {file_name} -> {os.path.getsize(comp) / (1024*1024):.2f}MB (Telegram Photo compliant)")
 
             try:
                 await upload_file_with_retry(
