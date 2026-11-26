@@ -136,7 +136,22 @@ class TestWebApp(unittest.TestCase):
 
             status = asyncio.run(web_app.upload_status())
             self.assertFalse(status["running"])
+            self.assertFalse(status["paused"])
             self.assertEqual(status["status_message"], "Idle")
+
+            # Test pause and resume endpoints
+            web_app.state.running = True
+            pause_res = asyncio.run(web_app.pause_upload())
+            self.assertTrue(pause_res["paused"])
+            self.assertTrue(web_app.state.paused)
+
+            resume_res = asyncio.run(web_app.resume_upload())
+            self.assertTrue(resume_res["resumed"])
+            self.assertFalse(web_app.state.paused)
+
+            asyncio.run(web_app.reset_upload())
+            self.assertFalse(web_app.state.running)
+            self.assertFalse(web_app.state.paused)
 
     def test_state_persistence(self):
         with tempfile.TemporaryDirectory() as tmpdir:

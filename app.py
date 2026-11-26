@@ -40,6 +40,9 @@ class UploadState:
         self.pending_phone_hash: Optional[str] = None
         self.task: Optional[asyncio.Task] = None
         self.running: bool = False
+        self.paused: bool = False
+        self.pause_event: asyncio.Event = asyncio.Event()
+        self.pause_event.set()
         self.total_files: int = 0
         self.completed_files: int = 0
         self.skipped_files: int = 0
@@ -331,6 +334,7 @@ async def browse_folder(req: BrowseRequest):
 
 async def _send_with_progress(client, target, file_path, caption, force_document, delay, label, delete_on_success=False, max_retries=5):
     """Upload a single file with fast parallel workers, capped retries, and decoupled send_file retries."""
+    await state.pause_event.wait()
     file_size = os.path.getsize(file_path)
     state.current_file = label
     state.current_bytes = 0
@@ -411,6 +415,8 @@ async def _send_with_progress(client, target, file_path, caption, force_document
 async def _run_background_upload(req: UploadStartRequest):
     """Background asyncio worker with hardened error boundaries and per-part state tracking."""
     state.running = True
+    state.paused = False
+    state.pause_event.set()
     state.completed_files = 0
     state.skipped_files = 0
     state.current_file = ""
@@ -450,6 +456,7 @@ async def _run_background_upload(req: UploadStartRequest):
         for file_path in all_files:
             if not state.running:
                 break
+            await state.pause_event.wait()
 
             # Anti-ban shield: Multi-tiered breathers for account longevity
             if session_upload_count > 0:
@@ -607,12 +614,45 @@ async def stop_upload():
     return {"stopped": True}
 
 
+@app.post("/api/upload/pause")
+async def pause_upload():
+    """Toggle or pause/resume the current active upload without resetting queue state."""
+    if not state.running:
+        return {"paused": False, "message": "No active upload to pause."}
+    if not state.paused:
+        state.paused = True
+        state.pause_event.clear()
+        state.status_message = "Paused"
+        state.log("[PAUSED] Upload queue paused by user.")
+        return {"paused": True, "status": "Paused"}
+    else:
+        state.paused = False
+        state.pause_event.set()
+        state.status_message = "Uploading..."
+        state.log("[RESUMED] Upload queue resumed by user.")
+        return {"paused": False, "status": "Resumed"}
+
+
+@app.post("/api/upload/resume")
+async def resume_upload():
+    """Resume the paused background upload."""
+    if not state.running:
+        return {"resumed": False, "message": "No active upload."}
+    state.paused = False
+    state.pause_event.set()
+    state.status_message = "Uploading..."
+    state.log("[RESUMED] Upload queue resumed by user.")
+    return {"resumed": True, "status": "Uploading"}
+
+
 @app.post("/api/upload/reset")
 async def reset_upload():
     """Reset all queue statistics and clear active status on the server."""
     if state.running and state.task:
         state.task.cancel()
     state.running = False
+    state.paused = False
+    state.pause_event.set()
     state.total_files = 0
     state.completed_files = 0
     state.skipped_files = 0
@@ -633,6 +673,7 @@ async def upload_status():
         pct = round((state.current_bytes / state.current_total_bytes) * 100, 1)
     return {
         "running": state.running,
+        "paused": state.paused,
         "total_files": state.total_files,
         "completed_files": state.completed_files,
         "skipped_files": state.skipped_files,

@@ -705,6 +705,9 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Start Background Upload
         </button>
+        <button id="pauseBtn" class="btn-subtle" onclick="togglePauseUpload()" disabled style="display:none; padding: 10px 18px; font-weight:700;">
+          <span id="pauseBtnText">⏸️ Pause Upload</span>
+        </button>
         <button id="stopBtn" class="btn-danger-arc" onclick="stopUpload()" disabled>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
           <span id="stopBtnText">Cancel Upload</span>
@@ -917,6 +920,19 @@
       }catch(e){m.textContent=e.message;}
     }
 
+    async function togglePauseUpload(){
+      const pauseBtnText = document.getElementById("pauseBtnText");
+      if (pauseBtnText) {
+        pauseBtnText.textContent = pauseBtnText.textContent.includes("Pause") ? "Pausing..." : "Resuming...";
+      }
+      try {
+        await api("/api/upload/pause", "POST");
+      } catch (e) {
+        console.error("Pause/resume error:", e);
+      }
+      setTimeout(poll, 250);
+    }
+
     async function stopUpload(){
       const btn = document.getElementById("stopBtnText");
       if (btn) btn.textContent = "Cancelling...";
@@ -934,6 +950,8 @@
       } catch (e) {
         console.error("Reset error:", e);
       }
+      const pBtn = document.getElementById("pauseBtn");
+      if (pBtn) pBtn.style.display = "none";
       document.getElementById("overallLabel").textContent = "0 / 0";
       document.getElementById("overallBar").style.width = "0%";
       document.getElementById("currentFileLabel").textContent = "Current: —";
@@ -951,13 +969,34 @@
         const s=await api("/api/upload/status");
         const stopBtn = document.getElementById("stopBtn");
         const stopText = document.getElementById("stopBtnText");
+        const pauseBtn = document.getElementById("pauseBtn");
+        const pauseText = document.getElementById("pauseBtnText");
         stopBtn.disabled = !s.running;
         if (s.running) {
           stopBtn.classList.add("active-cancel");
           if (stopText) stopText.textContent = "Cancel Upload";
+          if (pauseBtn) {
+            pauseBtn.style.display = "inline-flex";
+            pauseBtn.disabled = false;
+            if (s.paused) {
+              if (pauseText) pauseText.textContent = "▶️ Resume Upload";
+              pauseBtn.style.borderColor = "var(--okala-emerald)";
+              pauseBtn.style.color = "var(--okala-emerald)";
+              pauseBtn.style.background = "rgba(16, 185, 129, 0.15)";
+            } else {
+              if (pauseText) pauseText.textContent = "⏸️ Pause Upload";
+              pauseBtn.style.borderColor = "";
+              pauseBtn.style.color = "";
+              pauseBtn.style.background = "";
+            }
+          }
         } else {
           stopBtn.classList.remove("active-cancel");
           if (stopText) stopText.textContent = "Cancel Upload";
+          if (pauseBtn) {
+            pauseBtn.style.display = "none";
+            pauseBtn.disabled = true;
+          }
         }
         document.getElementById("statusText").textContent=s.status_message;
         const done=s.completed_files+s.skipped_files;
