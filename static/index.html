@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telegram Bulk Uploader</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 24px; }
+    .container { max-width: 1050px; margin: 0 auto; display: grid; gap: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    header h1 { margin: 0; font-size: 1.5rem; }
+    .badge { padding: 6px 12px; border-radius: 999px; font-size: 0.85rem; background: #0f172a; border: 1px solid var(--border); }
+    .badge.ok { border-color: var(--success); color: var(--success); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .card h2 { margin: 0 0 14px; font-size: 1.15rem; color: var(--accent); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+    input, select {
+      width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border);
+      background: #0f172a; color: var(--text); font-size: 0.95rem;
+    }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    button {
+      padding: 9px 16px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer;
+      background: var(--accent); color: #0f172a; transition: background 0.15s;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary { background: #334155; color: var(--text); }
+    button.danger { background: var(--danger); color: #fff; }
+    .checks { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+    .checks label { display: flex; align-items: center; gap: 6px; color: var(--text); cursor: pointer; margin: 0; }
+    .checks input[type="checkbox"] { width: auto; }
+    .list-box {
+      max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;
+      background: #0f172a; padding: 10px; margin-top: 10px;
+    }
+    .item-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 6px; border-bottom: 1px solid #1e293b; font-size: 0.9rem; }
+    .item-row label { display: flex; align-items: center; gap: 8px; color: var(--text); margin: 0; cursor: pointer; }
+    .item-row input[type="checkbox"] { width: auto; }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+    .progress-wrap { background: #0f172a; border-radius: 999px; height: 14px; overflow: hidden; border: 1px solid var(--border); margin: 8px 0; }
+    .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.25s; }
+    .progress-bar.green { background: var(--success); }
+    pre.logs {
+      background: #020617; border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+      max-height: 220px; overflow-y: auto; font-size: 0.82rem; color: #cbd5e1; margin: 10px 0 0;
+    }
+    .hidden { display: none; }
+    .msg { margin-top: 8px; font-size: 0.9rem; color: var(--warn); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Telegram Bulk Uploader</h1>
+      <span id="authBadge" class="badge">Checking session...</span>
+    </header>
+
+    <!-- 1. Telegram Login -->
+    <section class="card" id="authCard">
+      <h2>1. Telegram Account Login</h2>
+      <div id="loggedOutView">
+        <div class="grid">
+          <div>
+            <label>API ID (from my.telegram.org)</label>
+            <input id="apiId" type="number" placeholder="12345678" />
+          </div>
+          <div>
+            <label>API Hash</label>
+            <input id="apiHash" type="text" placeholder="your_api_hash" />
+          </div>
+          <div>
+            <label>Phone Number (with country code)</label>
+            <input id="phone" type="text" placeholder="+1234567890" />
+          </div>
+        </div>
+        <div class="row">
+          <button id="sendCodeBtn" onclick="sendCode()">Send Login Code</button>
+        </div>
+        <div id="otpSection" class="grid hidden" style="margin-top: 14px;">
+          <div>
+            <label>Telegram Verification Code</label>
+            <input id="otpCode" type="text" placeholder="12345" />
+          </div>
+          <div id="passwordWrap" class="hidden">
+            <label>2FA Password (if enabled)</label>
+            <input id="twoFaPassword" type="password" placeholder="2FA password" />
+          </div>
+          <div style="display:flex; align-items:end;">
+            <button onclick="verifyCode()">Verify &amp; Sign In</button>
+          </div>
+        </div>
+      </div>
+      <div id="loggedInView" class="hidden">
+        <p id="userSummary" style="margin:0 0 10px;"></p>
+        <button class="secondary" onclick="logout()">Log Out</button>
+      </div>
+      <div id="authMsg" class="msg"></div>
+    </section>
+
+    <!-- 2. Folder & File Selection -->
+    <section class="card">
+      <h2>2. Select Folders, Files &amp; Target</h2>
+      <div class="grid">
+        <div>
+          <label>Local Source Folder Path</label>
+          <input id="sourcePath" type="text" placeholder="D:\Photos\2025" />
+        </div>
+        <div>
+          <label>Target Chat / Channel</label>
+          <select id="targetSelect" onchange="syncTargetInput()">
+            <option value="me">Saved Messages (me)</option>
+          </select>
+        </div>
+        <div>
+          <label>Or Custom Target (@username or ID)</label>
+          <input id="targetCustom" type="text" value="me" />
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top: 12px;">
+        <div>
+          <label>Extensions Filter (optional, space-separated)</label>
+          <input id="extFilter" type="text" placeholder=".jpg .mp4 .mov" />
+        </div>
+        <div>
+          <label>Include Glob Patterns (optional)</label>
+          <input id="includeGlob" type="text" placeholder="*.jpg IMG_*" />
+        </div>
+        <div>
+          <label>Delay Between Uploads (seconds)</label>
+          <input id="delayInput" type="number" step="0.5" value="1.5" />
+        </div>
+      </div>
+
+      <div class="checks">
+        <label><input type="checkbox" id="splitLarge" checked /> Split &gt;2GB/4GB videos losslessly (FFmpeg)</label>
+        <label><input type="checkbox" id="premiumMode" /> Telegram Premium (4GB limit)</label>
+        <label><input type="checkbox" id="compressMedia" /> Compress media (streamable)</label>
+      </div>
+
+      <div class="row">
+        <button onclick="scanFolder()">Scan Folder</button>
+        <button class="secondary" onclick="selectAllFiles(true)">Select All</button>
+        <button class="secondary" onclick="selectAllFiles(false)">Select None</button>
+        <span id="scanSummary" class="muted"></span>
+      </div>
+
+      <div id="folderList" class="list-box hidden"></div>
+      <div id="fileList" class="list-box hidden"></div>
+      <div id="browseMsg" class="msg"></div>
+    </section>
+
+    <!-- 3. Background Upload Manager -->
+    <section class="card">
+      <h2>3. Background Upload Manager</h2>
+      <div class="row">
+        <button id="startBtn" onclick="startUpload()">Start Background Upload</button>
+        <button id="stopBtn" class="danger" onclick="stopUpload()" disabled>Stop Upload</button>
+        <span id="statusText" class="muted">Idle</span>
+      </div>
+
+      <div style="margin-top: 14px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+          <span>Overall Queue</span>
+          <span id="overallLabel">0 / 0</span>
+        </div>
+        <div class="progress-wrap"><div id="overallBar" class="progress-bar green"></div></div>
+
+        <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-top:8px;">
+          <span id="currentFileLabel">Current file: —</span>
+          <span id="currentPctLabel">0%</span>
+        </div>
+        <div class="progress-wrap"><div id="currentBar" class="progress-bar"></div></div>
+      </div>
+
+      <pre id="logsBox" class="logs">Logs will appear here...</pre>
+    </section>
+  </div>
+
+  <script>
+    let scannedFiles = [];
+
+    async function api(url, method = "GET", body = null) {
+      const opts = { method, headers: { "Content-Type": "application/json" } };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(url, opts);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Request failed");
+      return data;
+    }
+
+    async function checkAuth() {
+      const data = await api("/api/auth/status");
+      const badge = document.getElementById("authBadge");
+      const loggedOut = document.getElementById("loggedOutView");
+      const loggedIn = document.getElementById("loggedInView");
+      if (data.api_id) document.getElementById("apiId").value = data.api_id;
+      if (data.phone) document.getElementById("phone").value = data.phone;
+
+      if (data.authorized) {
+        badge.textContent = `Connected: ${data.user.first_name || data.user.phone}`;
+        badge.classList.add("ok");
+        loggedOut.classList.add("hidden");
+        loggedIn.classList.remove("hidden");
+        document.getElementById("userSummary").textContent =
+          `Signed in as ${data.user.first_name} (@${data.user.username || "no-username"}, ${data.user.phone})`;
+        loadDialogs();
+      } else {
+        badge.textContent = "Not Logged In";
+        badge.classList.remove("ok");
+        loggedOut.classList.remove("hidden");
+        loggedIn.classList.add("hidden");
+      }
+    }
+
+    async function loadDialogs() {
+      try {
+        const data = await api("/api/dialogs");
+        const sel = document.getElementById("targetSelect");
+        sel.innerHTML = "";
+        data.dialogs.forEach(d => {
+          const opt = document.createElement("option");
+          opt.value = d.id;
+          opt.textContent = `${d.name} [${d.type}]`;
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
+
+    function syncTargetInput() {
+      document.getElementById("targetCustom").value = document.getElementById("targetSelect").value;
+    }
+
+    async function sendCode() {
+      const msg = document.getElementById("authMsg");
+      msg.textContent = "";
+      try {
+        const res = await api("/api/auth/send-code", "POST", {
+          api_id: parseInt(document.getElementById("apiId").value, 10),
+          api_hash: document.getElementById("apiHash").value,
+          phone: document.getElementById("phone").value,
+          save_env: true
+        });
+        if (res.already_authorized) return checkAuth();
+        document.getElementById("otpSection").classList.remove("hidden");
+        msg.textContent = "Verification code sent to your Telegram app.";
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    }
+
+    async function verifyCode() {
+      const msg = document.getElementById("authMsg");
+      msg.textContent = "";
+      try {
+        const res = await api("/api/auth/verify-code", "POST", {
+          code: document.getElementById("otpCode").value,
+          password: document.getElementById("twoFaPassword").value || null
+        });
+        if (res.needs_password) {
+          document.getElementById("passwordWrap").classList.remove("hidden");
+          msg.textContent = "2FA enabled. Please enter your password and click Verify again.";
+          return;
+        }
+        checkAuth();
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    }
+
+    async function logout() {
+      try {
+        await api("/api/auth/logout", "POST");
+        checkAuth();
+      } catch (e) {
+        document.getElementById("authMsg").textContent = e.message;
+      }
+    }
+
+    async function scanFolder() {
+      const msg = document.getElementById("browseMsg");
+      msg.textContent = "";
+      const extText = document.getElementById("extFilter").value.trim();
+      const globText = document.getElementById("includeGlob").value.trim();
+      try {
+        const data = await api("/api/browse", "POST", {
+          source: document.getElementById("sourcePath").value,
+          ext: extText ? extText.split(/\s+/) : null,
+          include_patterns: globText ? globText.split(/\s+/) : null
+        });
+        scannedFiles = data.files;
+        document.getElementById("scanSummary").textContent =
+          `${data.total_files} file(s) across ${data.folders.length} folder(s)`;
+        renderFoldersAndFiles(data.folders, data.files);
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    }
+
+    function renderFoldersAndFiles(folders, files) {
+      const fBox = document.getElementById("folderList");
+      const fileBox = document.getElementById("fileList");
+      fBox.classList.remove("hidden");
+      fileBox.classList.remove("hidden");
+
+      fBox.innerHTML = "<strong>Folders</strong>" + folders.map(f => `
+        <div class="item-row">
+          <label>
+            <input type="checkbox" checked onchange="toggleFolder('${f.folder.replace(/'/g, "\\'")}', this.checked)" />
+            📁 ${f.folder}
+          </label>
+          <span class="muted">${f.count} files · ${f.size_human} (${f.uploaded_count} done)</span>
+        </div>
+      `).join("");
+
+      fileBox.innerHTML = "<strong>Files</strong>" + files.map((f, idx) => `
+        <div class="item-row">
+          <label>
+            <input type="checkbox" class="file-cb" data-folder="${f.folder}" data-rel="${f.rel_path}" ${f.uploaded ? "" : "checked"} />
+            ${f.rel_posix} ${f.uploaded ? '<span class="muted">(uploaded)</span>' : ""}
+          </label>
+          <span class="muted">${f.size_human}</span>
+        </div>
+      `).join("");
+    }
+
+    function toggleFolder(folder, checked) {
+      document.querySelectorAll(".file-cb").forEach(cb => {
+        if (cb.dataset.folder === folder) cb.checked = checked;
+      });
+    }
+
+    function selectAllFiles(checked) {
+      document.querySelectorAll(".file-cb").forEach(cb => { cb.checked = checked; });
+    }
+
+    async function startUpload() {
+      const selected = Array.from(document.querySelectorAll(".file-cb:checked")).map(cb => cb.dataset.rel);
+      const msg = document.getElementById("browseMsg");
+      msg.textContent = "";
+      try {
+        await api("/api/upload/start", "POST", {
+          source: document.getElementById("sourcePath").value,
+          selected_files: scannedFiles.length ? selected : null,
+          target: document.getElementById("targetCustom").value.trim() || "me",
+          compress: document.getElementById("compressMedia").checked,
+          premium: document.getElementById("premiumMode").checked,
+          split_large: document.getElementById("splitLarge").checked,
+          delay: parseFloat(document.getElementById("delayInput").value) || 1.5
+        });
+        pollStatus();
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    }
+
+    async function stopUpload() {
+      await api("/api/upload/stop", "POST");
+    }
+
+    async function pollStatus() {
+      try {
+        const s = await api("/api/upload/status");
+        document.getElementById("startBtn").disabled = s.running;
+        document.getElementById("stopBtn").disabled = !s.running;
+        document.getElementById("statusText").textContent = s.status_message;
+
+        const done = s.completed_files + s.skipped_files;
+        const overallPct = s.total_files ? Math.round((done / s.total_files) * 100) : 0;
+        document.getElementById("overallLabel").textContent =
+          `${s.completed_files} uploaded, ${s.skipped_files} skipped / ${s.total_files}`;
+        document.getElementById("overallBar").style.width = `${overallPct}%`;
+
+        document.getElementById("currentFileLabel").textContent =
+          s.current_file ? `Current: ${s.current_file}` : "Current file: —";
+        document.getElementById("currentPctLabel").textContent = `${s.current_progress_pct}%`;
+        document.getElementById("currentBar").style.width = `${s.current_progress_pct}%`;
+
+        if (s.logs.length) {
+          const box = document.getElementById("logsBox");
+          box.textContent = s.logs.join("\n");
+          box.scrollTop = box.scrollHeight;
+        }
+      } catch {}
+    }
+
+    checkAuth();
+    setInterval(pollStatus, 1000);
+  </script>
+</body>
+</html>

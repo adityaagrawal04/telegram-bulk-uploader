@@ -117,6 +117,27 @@ class TestUploaderCLI(unittest.TestCase):
                 ["AlbumA/2.jpg"],
             )
 
+
+class TestWebApp(unittest.TestCase):
+    def test_browse_and_status_endpoints(self):
+        import asyncio
+        import app as web_app
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sub = os.path.join(tmpdir, "Trip")
+            os.makedirs(sub)
+            with open(os.path.join(sub, "photo.jpg"), "wb") as f:
+                f.write(b"12345")
+
+            res = asyncio.run(web_app.browse_folder(web_app.BrowseRequest(source=tmpdir)))
+            self.assertEqual(res["total_files"], 1)
+            self.assertEqual(res["folders"][0]["folder"], "Trip")
+            self.assertEqual(res["files"][0]["name"], "photo.jpg")
+
+            status = asyncio.run(web_app.upload_status())
+            self.assertFalse(status["running"])
+            self.assertEqual(status["status_message"], "Idle")
+
     def test_state_persistence(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = os.path.join(tmpdir, "state.json")

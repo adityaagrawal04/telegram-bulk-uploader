@@ -68,7 +68,17 @@ A fault-tolerant, resumable Python CLI tool built on [Telethon](https://github.c
 
 ## Usage
 
-### Upload a folder to Saved Messages (uncompressed)
+### Option A: Web Interface (Recommended)
+Launch the local web dashboard to log in to Telegram, browse and select folders/files visually, and run uploads in the background with live progress bars:
+
+```bash
+python app.py
+```
+
+Then open **http://127.0.0.1:8000** in your browser.
+
+### Option B: Command-Line Interface (CLI)
+#### Upload a folder to Saved Messages (uncompressed)
 ```bash
 python uploader.py "/path/to/your/folder"
 ```
