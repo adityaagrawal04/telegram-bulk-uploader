@@ -1,23 +1,42 @@
-# Telegram Bulk Uploader
+# ⚡ Telegram Bulk Uploader
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Powered by Telethon](https://img.shields.io/badge/Telethon-1.36%2B-2CA5E0.svg)](https://github.com/LonamiWebs/Telethon)
-[![FastAPI Web UI](https://img.shields.io/badge/Web%20UI-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Telethon-1.36+-0088cc?style=for-the-badge&logo=telegram&logoColor=white" />
+  <img src="https://img.shields.io/badge/FastAPI-Dashboard-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/Turbo_Engine-16x_Parallel-FF6B6B?style=for-the-badge&logo=speedtest&logoColor=white" />
+  <img src="https://img.shields.io/badge/License-MIT-success?style=for-the-badge" />
+</p>
 
-A **user-friendly Web Dashboard + CLI tool** built on [Telethon](https://github.com/LonamiWebs/Telethon) and [FastAPI](https://fastapi.tiangolo.com/) to recursively archive large local photo, video, and document libraries (100GB–500GB+) to Telegram **one by one** without compression.
+<h3 align="center">
+  ✨ Turn Telegram into your private, unlimited, zero-compression cloud vault.
+</h3>
+
+<p align="center">
+  Tired of monthly cloud storage subscriptions, arbitrary size caps, and Telegram compressing your crisp 4K footage into blurry pixels?<br>
+  <b>Telegram Bulk Uploader</b> is a high-speed, aesthetically tuned cloud archiver equipped with an <b>Arc &amp; Okala-inspired Glass Dashboard</b> and a <b>16-Stream Turbo Highway</b> that backs up 100GB–500GB+ libraries effortlessly.
+</p>
+
+<p align="center">
+  <img src="assets/demo.gif" alt="Telegram Bulk Uploader Demo Walkthrough" width="760" style="border-radius:18px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);" />
+</p>
+
+<p align="center">
+  🍿 <i>Prefer sound? Listen to the voiceover explainer video in <a href="assets/demo.mp4"><b>assets/demo.mp4</b></a></i>
+</p>
 
 ---
 
-## The Problem vs. The Fix
+## ⚡ The Vibe Check: The Struggle vs. The Fix
 
-| The Pain | How This App Solves It |
+| 💀 The Struggle | 🚀 The Fix |
 | :--- | :--- |
-| 💥 **Hitting the 2GB Limit** | Uploads every photo, video, and file **one by one**—so a 500GB folder never fails as a single giant archive. |
-| ✂️ **4K Videos Over 2GB/4GB** | **FFmpeg Auto-Split** slices oversized videos losslessly (`-c copy`) into Telegram-safe parts and cleans up after. |
-| 📉 **Quality Loss & Compression** | Sends files as **uncompressed documents** by default—zero bitrate drop, full RAW/EXIF metadata preserved. |
-| 📶 **Wi-Fi Drops & Rate Limits** | **Auto-Resume** (`uploaded_state.json`) skips finished files and waits out `FloodWaitError` cooldowns automatically. |
-| 🖥️ **No Ugly Terminal Setup** | Launch a **sleek Web Dashboard** with 1 click (`start.bat` / `start.sh`), sign in via OTP/2FA, pick folders, and upload in the background. |
+| **Hitting the 2GB Wall**<br><sub>Zipping a 100GB album fails instantly because Telegram caps single uploads at 2GB.</sub> | **Zero-Stress Granular Queue**<br><sub>Uploads file-by-file in sequence. Back up 500GB archives without ever hitting single-archive file limits.</sub> |
+| **Massive 4K Videos (>2GB / 4GB)**<br><sub>ProRes and high-bitrate clips that exceed Telegram limits.</sub> | **Lossless Auto-Split Engine**<br><sub>Embedded FFmpeg automatically slices videos into `-c copy` chapters without re-encoding, preserving 100% of your bitrate.</sub> |
+| **Crispy Compression & Lost Metadata**<br><sub>Telegram turning high-res photos into potato quality and stripping EXIF data.</sub> | **Studio-Grade Uncompressed Mode**<br><sub>Pushes every single asset as a pristine document (`force_document=True`). Zero pixel loss, 100% RAW/EXIF intact.</sub> |
+| **The "Wi-Fi Dropped at 98%" Rage**<br><sub>One connection drop and default scripts restart your entire 50GB queue from scratch.</sub> | **Bulletproof Resume Engine**<br><sub>Local ledger (`uploaded_state.json`) remembers every file. If internet drops, it seamlessly resumes where it left off.</sub> |
+| **Ugly Terminal Screens & Complex Flags**<br><sub>Typing endless console arguments and modifying source code.</sub> | **Arc &amp; Okala-Inspired Glass Dashboard**<br><sub>Fluid dark aesthetic with native 1-click folder browsing, OTP/2FA sign-in, live MB/s telemetry, and background upload monitor.</sub> |
+| **Painfully Slow Upload Speeds**<br><sub>Stock single-thread uploads crawling at 1–2 MB/s on fast connections.</sub> | **16-Stream Turbo Highway**<br><sub>Custom multipart connection pool with C-accelerated `cryptg` encryption, pushing your bandwidth to its real limits.</sub> |
 
 ---
 
