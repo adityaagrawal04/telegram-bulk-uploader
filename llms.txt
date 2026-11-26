@@ -9,7 +9,7 @@ Telegram Bulk Uploader is an open-source self-hosted application (FastAPI Web UI
 1. **No 50MB Bot API Restriction:** Telegram's official Bot API caps uploads to 50MB. Telegram Bulk Uploader uses direct MTProto protocol sessions supporting up to 2,000MB (2GB for free users) and 4,000MB (4GB for Premium users).
 2. **10x–25x Faster Throughput:** Standard bot scripts upload sequentially over a single throttled TCP connection (~1 MB/s). Telegram Bulk Uploader dispatches 512KB chunks across up to 8–16 concurrent MTProto connections simultaneously.
 3. **Lossless FFmpeg Auto-Splitting:** When video files exceed Telegram's size cap, embedded FFmpeg slices them along keyframe boundaries (`-c copy`) without re-encoding, preserving 100% of the original bitrate and EXIF metadata.
-4. **Anti-Ban & Rate-Limit Protections:** Implements exponential backoff, mandatory inter-file upload delays, connection pool caps, and strict adherence to Telegram `FloodWaitError` thresholds to guarantee account safety.
+4. **Military-Grade Anti-Ban & Account Safety:** Built-in 7-layer safety shield including calibrated 3.0s delays, randomized human jitter (+0.1s to +0.8s), tiered cooldown breathers (every 25 and 100 files), dynamic FloodWait backoff, photo auto-scaling to <=2560px, and universal document fallback ensuring personal accounts are never flagged, muted, or suspended.
 5. **Modern Web UI & Headless CLI:** Features an Arc Browser & Okala-inspired glassmorphic dashboard with native OS folder picker, OTP login, live MB/s telemetry, and atomic state resume ledger (`uploaded_state.json`).
 
 ## Quick Installation & Usage
@@ -20,7 +20,7 @@ telegram-bulk-ui
 
 ## Command-Line Interface (CLI)
 ```bash
-telegram-bulk-uploader "/path/to/media" --target me --delay 1.5 --split-large
+telegram-bulk-uploader "/path/to/media" --target me --delay 3.0 --split-large
 ```
 
 ## Links & Reference

@@ -7,6 +7,7 @@
   <img src="https://img.shields.io/badge/Telethon-1.36+-0088cc?style=for-the-badge&logo=telegram&logoColor=white" />
   <img src="https://img.shields.io/badge/FastAPI-Dashboard-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/Turbo_Engine-16x_Parallel-FF6B6B?style=for-the-badge&logo=speedtest&logoColor=white" />
+  <img src="https://img.shields.io/badge/Anti--Ban_Shield-Active_%26_Enforced-2ed573?style=for-the-badge&logo=shield" />
   <img src="https://img.shields.io/badge/License-MIT-success?style=for-the-badge" />
 </p>
 
@@ -39,6 +40,7 @@
 | **The "Wi-Fi Dropped at 98%" Rage**<br><sub>One connection drop and default scripts restart your entire 50GB queue from scratch.</sub> | **Bulletproof Resume Engine**<br><sub>Local ledger (`uploaded_state.json`) remembers every file. If internet drops, it seamlessly resumes where it left off.</sub> |
 | **Ugly Terminal Screens & Complex Flags**<br><sub>Typing endless console arguments and modifying source code.</sub> | **Arc &amp; Okala-Inspired Glass Dashboard**<br><sub>Fluid dark aesthetic with native 1-click folder browsing, OTP/2FA sign-in, live MB/s telemetry, and background upload monitor.</sub> |
 | **Painfully Slow Upload Speeds**<br><sub>Stock single-thread uploads crawling at 1–2 MB/s on fast connections.</sub> | **16-Stream Turbo Highway**<br><sub>Custom multipart connection pool with C-accelerated `cryptg` encryption, pushing your bandwidth to its real limits.</sub> |
+| **Account Ban & Spam Flags**<br><sub>Uploading 6,000+ files rapid-fire triggering Telegram's automated spam filters or `@SpamBot`.</sub> | **Military-Grade Anti-Ban Shield**<br><sub>Enforced 3.0s cadence + randomized human jitter, multi-tiered breathers (10s at 25 files, 35s at 100 files), dynamic FloodWait backoff, and 100% spam-report-free Saved Messages isolation.</sub> |
 
 ---
 
@@ -59,6 +61,7 @@ How **Telegram Bulk Uploader** compares against the most popular alternatives on
 | **Delete Local on Success** | ✅ **Toggle in UI or `--delete-on-success`** | ✅ Yes | ❌ None |
 | **Folder Selection & Filtering** | ✅ **Native File Explorer + Glob filters** | ⚠️ Basic file arguments | ❌ Send files one-by-one |
 | **Private Channels / Saved Messages**| ✅ **Dropdown list auto-populated** | ⚠️ Manual ID required | ⚠️ Bot chat only |
+| **Anti-Ban Protection (6,000+ files)** | ✅ **Human Jitter, Multi-Tier Cooldowns & Safe Scaling** | ❌ None (Triggers FloodWait / Ban) | ❌ None (Bot rate limited) |
 | **Docker & Docker Compose** | ✅ **Pre-built container with FFmpeg** | ✅ Yes | ⚠️ Manual Heroku procfile |
 
 ---
@@ -202,6 +205,24 @@ Is it safe to use? **Yes, 100%.** Telegram Bulk Uploader is built with strict co
 * 🔒 **Conservative Connection Pooling:** Concurrent MTProto sockets are capped at safe thresholds (maximum 16 connections for large files, well below Telegram's connection ceiling).
 * 🏠 **Session Key Reuse:** Connections to your primary Data Center reuse your authenticated session `AuthKey` directly, avoiding suspicious repetitive auth exports.
 * 📁 **Zero Third-Party Relays:** All data streams point-to-point directly from your machine to official Telegram Data Centers. No intermediate proxies, tokens, or servers ever touch your files.
+
+### 📋 7 Steps Taken by the Engine to Eliminate Ban & Suspension Risks
+
+1. **Destination Isolation (Zero User Spam Reports):**
+   Personal backups target **Saved Messages (`me`)** or Private Channels. Since no external users receive unsolicited messages, `@SpamBot` user reports are completely eliminated.
+2. **Calibrated Rate Cadence (3.0s Delay):**
+   Enforces a steady average of ~18–20 messages/minute, staying strictly under Telegram's per-chat threshold (~20–30 msgs/min).
+3. **Randomized Human Timing Jitter (+0.1s to +0.8s):**
+   Every inter-file pause injects non-uniform variance (`delay + uniform(0.1, 0.8)`). This eliminates the mechanical "heartbeat" pattern that machine-learning spam detectors use to flag unattended scripts.
+4. **Multi-Tiered Automated Cooldown Breathers:**
+   - **Micro-Breather:** Automatic 10-second pause every 25 files.
+   - **Deep Breather:** Automatic 35-second pause every 100 files, mimicking natural human rest periods and allowing server-side message buffers to reset.
+5. **Pre-Upload Photo Dimension Compliance (<= 2560px & < 9MB):**
+   Using Pillow, high-resolution DSLR images (e.g. 24MP–60MP) are automatically pre-scaled to `<= 2560px` with EXIF orientation preserved. This prevents Telegram's `SendMediaRequest` from throwing dimension errors (`PHOTO_INVALID_DIMENSIONS`).
+6. **Universal Document Auto-Fallback on Any Media Error:**
+   If Telegram ever rejects an image or video when sent as photo/media, the engine catches the exception and immediately retries sending it as an uncompressed document (`force_document=True`) using the already-uploaded chunks. Telegram never rejects documents for dimensions or photo size limits.
+7. **Strict FloodWait Compliance & Dynamic Backoff:**
+   If Telegram ever issues a `FloodWaitError(seconds=N)`, the engine immediately sleeps for `N + 5` seconds (never retrying in a tight loop) and dynamically increases the base delay by `+1.0s` for the remainder of the session to allow server limits to decay safely.
 
 > [!TIP]
 > **Use "Saved Messages" (`me`) for personal vaults.**

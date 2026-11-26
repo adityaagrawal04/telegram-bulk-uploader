@@ -8,14 +8,15 @@ version = "1.2.0"
 authors = [
   { name="Aditya Sanjay Agrawal" },
 ]
-description = "The fastest Telegram uploader on the internet. Fault-tolerant bulk uploader with Arc & Okala Glass UI, 16x parallel MTProto engine, and lossless FFmpeg splitting."
+description = "The fastest Telegram uploader on the internet. Fault-tolerant bulk uploader with Arc & Okala Glass UI, 16x parallel MTProto engine, lossless FFmpeg splitting, and military-grade Anti-Ban protection."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { file = "LICENSE" }
 keywords = [
   "telegram", "uploader", "bulk-upload", "telethon", "fastapi", "backup",
   "archiver", "cloud-storage", "ffmpeg", "video-splitter", "cli",
-  "telegram-uploader", "telegram-cloud", "fast-telethon"
+  "telegram-uploader", "telegram-cloud", "fast-telethon", "anti-ban",
+  "safe-telegram-uploader", "rate-limit-protection"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
