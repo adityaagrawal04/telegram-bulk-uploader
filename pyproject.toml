@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "telegram-bulk-uploader"
 version = "1.2.0"
 authors = [
-  { name="Aditya Sanjay Agrawal", email="966524b@gmail.com" },
+  { name="Aditya Sanjay Agrawal" },
 ]
 description = "The fastest Telegram uploader on the internet. Fault-tolerant bulk uploader with Arc & Okala Glass UI, 16x parallel MTProto engine, and lossless FFmpeg splitting."
 readme = "README.md"
