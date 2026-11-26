@@ -2,6 +2,7 @@
 
 <p align="center">
   <a href="https://github.com/adityaagrawal04/telegram-bulk-uploader/actions/workflows/ci.yml"><img src="https://github.com/adityaagrawal04/telegram-bulk-uploader/actions/workflows/ci.yml/badge.svg" alt="CI Status" /></a>
+  <a href="https://pypi.org/project/telegram-bulk-uploader/"><img src="https://img.shields.io/pypi/v/telegram-bulk-uploader?style=for-the-badge&logo=pypi&logoColor=white&color=0073b7" alt="PyPI Version" /></a>
   <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/Telethon-1.36+-0088cc?style=for-the-badge&logo=telegram&logoColor=white" />
   <img src="https://img.shields.io/badge/FastAPI-Dashboard-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -81,17 +82,28 @@ flowchart LR
 
 ---
 
-## 1-Click Quick Start (Web UI)
+## 🚀 Quick Start
 
+### Option A: Install from PyPI (Easiest)
+```bash
+pip install telegram-bulk-uploader
+telegram-bulk-ui
+```
+*To use the command-line interface directly:*
+```bash
+telegram-bulk-uploader --target me "C:\path\to\your\folder"
+```
+
+### Option B: Clone & Launch via 1-Click Scripts
 Anyone who clones this repository can launch the Web UI in seconds—no manual `.env` editing required.
 
-### 1. Clone the repository
+#### 1. Clone the repository
 ```bash
 git clone https://github.com/adityaagrawal04/telegram-bulk-uploader.git
 cd telegram-bulk-uploader
 ```
 
-### 2. Launch with one command
+#### 2. Launch with one command
 - **Windows:** Double-click `start.bat` (or run `.\start.bat` in PowerShell)
 - **macOS / Linux:**
   ```bash
