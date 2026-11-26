@@ -377,7 +377,7 @@ async def upload_file_with_retry(
                     client,
                     file_path,
                     progress_callback=progress_callback,
-                    max_workers=8
+                    max_workers=16
                 )
 
                 await client.send_file(

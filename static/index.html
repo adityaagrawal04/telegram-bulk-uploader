@@ -709,7 +709,11 @@
         <div>
           <div class="progress-meta">
             <span id="currentFileLabel">Current File: —</span>
-            <span id="currentPctLabel">0%</span>
+            <div>
+              <span id="speedLabel" style="color:var(--okala-emerald); margin-right: 12px; font-family:'JetBrains Mono', monospace;">0.0 MB/s</span>
+              <span id="etaLabel" style="color:var(--okala-orange); margin-right: 12px; font-family:'JetBrains Mono', monospace;">ETA: —</span>
+              <span id="currentPctLabel">0%</span>
+            </div>
           </div>
           <div class="arc-track">
             <div id="currentBar" class="arc-fill-file"></div>
@@ -908,6 +912,19 @@
         document.getElementById("currentFileLabel").textContent=s.current_file?`Current: ${s.current_file}`:"Current: —";
         document.getElementById("currentPctLabel").textContent=s.current_progress_pct+"%";
         document.getElementById("currentBar").style.width=s.current_progress_pct+"%";
+
+        const spEl = document.getElementById("speedLabel");
+        if (spEl) spEl.textContent = s.speed_mbps > 0 ? `⚡ ${s.speed_mbps} MB/s` : "";
+        const etaEl = document.getElementById("etaLabel");
+        if (etaEl) {
+          if (s.eta_seconds > 0) {
+            const m = Math.floor(s.eta_seconds / 60);
+            const sec = s.eta_seconds % 60;
+            etaEl.textContent = `⏱️ ${m > 0 ? m + 'm ' : ''}${sec}s`;
+          } else {
+            etaEl.textContent = "";
+          }
+        }
         if(s.logs.length){
           const b=document.getElementById("logsBox");
           b.textContent=s.logs.join("\n");

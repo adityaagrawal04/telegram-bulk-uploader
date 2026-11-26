@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  uploader:
+    build: .
+    container_name: telegram-bulk-uploader
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./.env:/app/.env
+      - ./uploaded_state.json:/app/uploaded_state.json
+      - ./skipped_large_files.txt:/app/skipped_large_files.txt
+      - ./data:/data

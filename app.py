@@ -45,8 +45,10 @@ class UploadState:
         self.current_file: str = ""
         self.current_bytes: int = 0
         self.current_total_bytes: int = 0
+        self.speed_mbps: float = 0.0
+        self.eta_seconds: int = 0
         self.status_message: str = "Idle"
-        self.logs: deque = deque(maxlen=150)
+        self.logs: deque = deque(maxlen=200)
 
     def log(self, message: str):
         self.logs.append(message)
@@ -331,19 +333,30 @@ async def _send_with_progress(client, target, file_path, caption, force_document
     state.current_file = label
     state.current_bytes = 0
     state.current_total_bytes = file_size
+    state.speed_mbps = 0.0
+    state.eta_seconds = 0
+    start_time = asyncio.get_event_loop().time()
 
     while True:
         try:
             def progress_cb(current, total):
+                now = asyncio.get_event_loop().time()
+                elapsed = max(0.001, now - start_time)
                 state.current_bytes = current
                 state.current_total_bytes = total or file_size
+                # Transfer speed in Megabytes per second
+                speed = (current / (1024 * 1024)) / elapsed
+                state.speed_mbps = round(speed, 2)
+                rem_bytes = max(0, (total or file_size) - current)
+                if speed > 0:
+                    state.eta_seconds = int(rem_bytes / (speed * 1024 * 1024))
 
-            # Turbocharged parallel upload
+            # Turbocharged 16-worker parallel upload
             uploaded_input = await fast_upload_file(
                 client,
                 file_path,
                 progress_callback=progress_cb,
-                max_workers=8
+                max_workers=16
             )
 
             await client.send_file(
@@ -523,6 +536,8 @@ async def upload_status():
         "current_bytes": state.current_bytes,
         "current_total_bytes": state.current_total_bytes,
         "current_progress_pct": pct,
+        "speed_mbps": state.speed_mbps,
+        "eta_seconds": state.eta_seconds,
         "status_message": state.status_message,
         "logs": list(state.logs),
     }
