@@ -441,31 +441,31 @@ def compress_image_below_limit(file_path, output_dir=None, max_bytes=MAX_IMAGE_C
             if needs_resize:
                 img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
 
-            for quality in [85, 75, 65, 50, 35]:
-                img.save(out_path, format="JPEG", quality=quality, optimize=True)
+            # High-fidelity quality ladder: Starts at studio-grade 95% with 4:4:4 full chroma
+            # (zero color degradation, lossless visual perception)
+            for quality in [95, 92, 90, 88, 85, 80]:
+                img.save(out_path, format="JPEG", quality=quality, subsampling=0, optimize=True)
                 if os.path.getsize(out_path) <= max_bytes:
                     return out_path
 
-            # Progressively scale down further if still > max_bytes
+            # If still > max_bytes, gently scale down while retaining high 88% quality
             w, h = img.size
-            scale = 0.8
-            while scale >= 0.25:
+            for scale in [0.90, 0.80, 0.70, 0.60]:
                 new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
                 resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                resized.save(out_path, format="JPEG", quality=70, optimize=True)
+                resized.save(out_path, format="JPEG", quality=88, subsampling=0, optimize=True)
                 if os.path.getsize(out_path) <= max_bytes:
                     return out_path
-                scale -= 0.15
 
             if os.path.exists(out_path):
                 return out_path
     except Exception:
         pass
 
-    # Method 2: FFmpeg fallback
+    # Method 2: FFmpeg fallback with pristine quality (-q:v 2 starting point)
     if is_ffmpeg_available():
         scale_filter = f"scale='min({max_dim},iw)':'min({max_dim},ih)':force_original_aspect_ratio=decrease"
-        for q in [3, 5, 8, 12]:
+        for q in [2, 3, 4, 5, 8]:
             cmd = ["ffmpeg", "-y", "-i", file_path, "-vf", scale_filter, "-q:v", str(q), "-frames:v", "1", out_path]
             res = subprocess.run(cmd, capture_output=True)
             if res.returncode == 0 and os.path.exists(out_path) and os.path.getsize(out_path) <= max_bytes:
