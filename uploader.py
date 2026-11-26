@@ -3,6 +3,7 @@ import json
 import math
 import shutil
 import asyncio
+import fnmatch
 import argparse
 import subprocess
 import tempfile
@@ -60,6 +61,36 @@ def parse_args():
         action="store_true",
         help="Losslessly split video files exceeding the size limit into chunks using FFmpeg before uploading",
     )
+    parser.add_argument(
+        "--folders",
+        nargs="+",
+        default=None,
+        help="Only upload from these subfolders (relative path or folder name)",
+    )
+    parser.add_argument(
+        "--exclude-folders",
+        nargs="+",
+        default=None,
+        help="Skip these subfolders (relative path or folder name)",
+    )
+    parser.add_argument(
+        "--include",
+        nargs="+",
+        default=None,
+        help="Only upload files matching glob patterns (e.g., --include '*.jpg' 'IMG_*')",
+    )
+    parser.add_argument(
+        "--exclude",
+        nargs="+",
+        default=None,
+        help="Exclude files matching glob patterns (e.g., --exclude '*.tmp' '*draft*')",
+    )
+    parser.add_argument(
+        "-i",
+        "--select",
+        action="store_true",
+        help="Interactively choose which folders and files to upload before starting",
+    )
     return parser.parse_args()
 
 
@@ -75,15 +106,68 @@ def save_state(uploaded_set):
         json.dump(list(uploaded_set), f, indent=2)
 
 
-def get_all_files(root_dir, allowed_exts=None):
+def _normalize_folder_filters(folders):
+    """Normalize folder filter strings to POSIX relative style."""
+    if not folders:
+        return None
+    return [f.replace("\\", "/").strip("/") for f in folders if f.strip("/\\")]
+
+
+def _folder_matches(rel_dir, folder_filters):
+    """Return True if rel_dir matches any folder filter (exact, prefix, or segment)."""
+    if rel_dir == ".":
+        return "." in folder_filters
+    parts = rel_dir.split("/")
+    for target in folder_filters:
+        if rel_dir == target or rel_dir.startswith(f"{target}/") or target in parts:
+            return True
+    return False
+
+
+def _matches_any_glob(file_name, rel_file, patterns):
+    """Return True if file_name or rel_file matches any glob pattern (case-insensitive)."""
+    name_lower = file_name.lower()
+    rel_lower = rel_file.lower()
+    return any(
+        fnmatch.fnmatch(name_lower, p.lower()) or fnmatch.fnmatch(rel_lower, p.lower())
+        for p in patterns
+    )
+
+
+def get_all_files(
+    root_dir,
+    allowed_exts=None,
+    include_folders=None,
+    exclude_folders=None,
+    include_patterns=None,
+    exclude_patterns=None,
+):
+    """Walk root_dir and return sorted file paths matching extension, folder, and glob filters."""
     file_list = []
     normalized_exts = (
         {ext.lower() if ext.startswith(".") else f".{ext.lower()}" for ext in allowed_exts}
         if allowed_exts
         else None
     )
+    inc_folders = _normalize_folder_filters(include_folders)
+    exc_folders = _normalize_folder_filters(exclude_folders)
 
-    for root, _, files in os.walk(root_dir):
+    for root, dirs, files in os.walk(root_dir):
+        rel_dir = os.path.relpath(root, root_dir).replace("\\", "/")
+        if exc_folders:
+            dirs[:] = [
+                d
+                for d in dirs
+                if not _folder_matches(
+                    d if rel_dir == "." else f"{rel_dir}/{d}", exc_folders
+                )
+            ]
+            if rel_dir != "." and _folder_matches(rel_dir, exc_folders):
+                continue
+
+        if inc_folders and not _folder_matches(rel_dir, inc_folders):
+            continue
+
         for file in files:
             if file.startswith(".") or file.lower() in {"thumbs.db", "desktop.ini"}:
                 continue
@@ -91,10 +175,104 @@ def get_all_files(root_dir, allowed_exts=None):
                 _, ext = os.path.splitext(file)
                 if ext.lower() not in normalized_exts:
                     continue
+            rel_file = file if rel_dir == "." else f"{rel_dir}/{file}"
+            if include_patterns and not _matches_any_glob(file, rel_file, include_patterns):
+                continue
+            if exclude_patterns and _matches_any_glob(file, rel_file, exclude_patterns):
+                continue
             file_list.append(os.path.join(root, file))
 
     file_list.sort()
     return file_list
+
+
+def format_size(num_bytes):
+    """Format byte count as a human-readable string."""
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if num_bytes < 1024 or unit == "TB":
+            return f"{num_bytes:.2f} {unit}" if unit != "B" else f"{num_bytes} B"
+        num_bytes /= 1024
+
+
+def parse_selection_indices(raw_input, max_index):
+    """Parse 1-based selection input ('all', 'none', or '1,3-5') into sorted 0-based indices."""
+    text = raw_input.strip().lower()
+    if text in {"", "all", "*"}:
+        return list(range(max_index))
+    if text in {"none", "0"}:
+        return []
+
+    selected = set()
+    for token in text.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if "-" in token:
+            parts = token.split("-", 1)
+            start, end = int(parts[0]), int(parts[1])
+            if start < 1 or end > max_index or start > end:
+                raise ValueError(f"Range '{token}' is out of bounds (1-{max_index}).")
+            selected.update(range(start - 1, end))
+        else:
+            idx = int(token)
+            if idx < 1 or idx > max_index:
+                raise ValueError(f"Index '{idx}' is out of bounds (1-{max_index}).")
+            selected.add(idx - 1)
+    return sorted(selected)
+
+
+def _prompt_indices(prompt_text, max_index):
+    """Prompt until valid selection indices are entered."""
+    while True:
+        try:
+            return parse_selection_indices(input(prompt_text), max_index)
+        except ValueError as e:
+            print(f"Invalid selection: {e}")
+
+
+def interactive_select_files(root_dir, file_list):
+    """Interactively let the user select folders and optionally individual files."""
+    if not file_list:
+        return []
+
+    folders = {}
+    for path in file_list:
+        rel_dir = os.path.relpath(os.path.dirname(path), root_dir).replace("\\", "/")
+        label = "(root)" if rel_dir == "." else rel_dir
+        folders.setdefault(label, []).append(path)
+
+    folder_items = sorted(folders.items(), key=lambda kv: kv[0])
+    print("\nAvailable folders:")
+    for idx, (label, paths) in enumerate(folder_items, start=1):
+        total_bytes = sum(os.path.getsize(p) for p in paths)
+        print(f"  [{idx}] {label} ({len(paths)} files, {format_size(total_bytes)})")
+
+    chosen_folder_idxs = _prompt_indices(
+        "\nSelect folders (e.g. 1,3-5, 'all', or 'none') [all]: ",
+        len(folder_items),
+    )
+    if not chosen_folder_idxs:
+        return []
+
+    selected_files = []
+    for idx in chosen_folder_idxs:
+        selected_files.extend(folder_items[idx][1])
+    selected_files.sort()
+
+    pick_files = input("\nSelect individual files within chosen folders? [y/N]: ").strip().lower()
+    if pick_files not in {"y", "yes"}:
+        return selected_files
+
+    print("\nAvailable files:")
+    for idx, path in enumerate(selected_files, start=1):
+        rel_path = os.path.relpath(path, root_dir).replace("\\", "/")
+        print(f"  [{idx}] {rel_path} ({format_size(os.path.getsize(path))})")
+
+    chosen_file_idxs = _prompt_indices(
+        "\nSelect files (e.g. 1,2,4-6, 'all', or 'none') [all]: ",
+        len(selected_files),
+    )
+    return [selected_files[i] for i in chosen_file_idxs]
 
 
 def log_skipped_file(rel_path, file_size, limit_gb, reason=None):
@@ -238,17 +416,34 @@ async def main():
     force_document = not args.compress
     chat_target = int(args.target) if args.target.lstrip("-").isdigit() else args.target
 
+    all_files = get_all_files(
+        args.source,
+        allowed_exts=args.ext,
+        include_folders=args.folders,
+        exclude_folders=args.exclude_folders,
+        include_patterns=args.include,
+        exclude_patterns=args.exclude,
+    )
+    if args.select:
+        all_files = interactive_select_files(args.source, all_files)
+
+    if not all_files:
+        print("No matching files selected for upload.")
+        return
+
     client = TelegramClient("telegram_uploader_session", int(api_id), api_hash)
     await client.start(phone=phone)
     print("Connected to Telegram successfully.")
 
     target = await client.get_input_entity(chat_target)
     uploaded_files = load_state()
-    all_files = get_all_files(args.source, args.ext)
+    remaining_count = sum(
+        1 for f in all_files if os.path.relpath(f, args.source) not in uploaded_files
+    )
 
     print(f"Total matching files: {len(all_files)}")
-    print(f"Already uploaded:     {len(uploaded_files)}")
-    print(f"Remaining to upload:  {max(0, len(all_files) - len(uploaded_files))}\n")
+    print(f"Already uploaded:     {len(all_files) - remaining_count}")
+    print(f"Remaining to upload:  {remaining_count}\n")
 
     for index, file_path in enumerate(all_files, start=1):
         rel_path = os.path.relpath(file_path, args.source)

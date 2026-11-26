@@ -88,6 +88,16 @@ python uploader.py "/path/to/your/folder" --target -1001234567890 --premium --ex
 python uploader.py "/path/to/your/folder" --target -1001234567890 --split-large
 ```
 
+### Interactively pick folders and files (`--select`)
+```bash
+python uploader.py "/path/to/your/folder" --select
+```
+
+### Filter specific folders and file patterns
+```bash
+python uploader.py "/path/to/your/folder" --folders Vacation2025 "Family/Trip" --exclude-folders raw --include "*.jpg" "*.mp4" --exclude "*draft*"
+```
+
 ### Upload as compressed, streamable Telegram media with a custom delay
 ```bash
 python uploader.py "/path/to/your/folder" --compress --delay 2.5
@@ -106,6 +116,11 @@ python uploader.py "/path/to/your/folder" --compress --delay 2.5
 | `--ext` | Space-separated list of file extensions to include (e.g. `.jpg .mp4`) | All files |
 | `--delay` | Seconds to wait between consecutive uploads | `1.5` |
 | `--split-large` | Losslessly split oversized video files into chunks via FFmpeg | `False` |
+| `-i`, `--select` | Interactively choose which folders and files to upload | `False` |
+| `--folders` | Only upload from matching subfolders (path or folder name) | All folders |
+| `--exclude-folders` | Skip matching subfolders (path or folder name) | None |
+| `--include` | Only upload files matching glob patterns (e.g. `*.jpg`) | All files |
+| `--exclude` | Exclude files matching glob patterns (e.g. `*draft*`) | None |
 
 ---
 

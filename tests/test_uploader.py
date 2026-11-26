@@ -67,6 +67,56 @@ class TestUploaderCLI(unittest.TestCase):
             filtered_names = [os.path.basename(p) for p in filtered]
             self.assertEqual(filtered_names, ["a.jpg", "b.MP4"])
 
+    def test_folder_and_glob_filters(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for rel in [
+                "Vacation/day1.jpg",
+                "Vacation/raw/img1.dng",
+                "Family/party.mp4",
+                "Family/draft_clip.mp4",
+                "temp/cache.jpg",
+            ]:
+                full = os.path.join(tmpdir, rel)
+                os.makedirs(os.path.dirname(full), exist_ok=True)
+                with open(full, "wb") as f:
+                    f.write(b"data")
+
+            selected = uploader.get_all_files(
+                tmpdir,
+                include_folders=["Vacation", "Family"],
+                exclude_folders=["raw"],
+                include_patterns=["*.jpg", "*.mp4"],
+                exclude_patterns=["*draft*"],
+            )
+            rels = [os.path.relpath(p, tmpdir).replace("\\", "/") for p in selected]
+            self.assertEqual(rels, ["Family/party.mp4", "Vacation/day1.jpg"])
+
+    def test_parse_selection_indices(self):
+        self.assertEqual(uploader.parse_selection_indices("", 4), [0, 1, 2, 3])
+        self.assertEqual(uploader.parse_selection_indices("all", 3), [0, 1, 2])
+        self.assertEqual(uploader.parse_selection_indices("none", 3), [])
+        self.assertEqual(uploader.parse_selection_indices("1,3-4", 5), [0, 2, 3])
+        with self.assertRaises(ValueError):
+            uploader.parse_selection_indices("2-6", 5)
+
+    def test_interactive_select_files(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            paths = []
+            for rel in ["AlbumA/1.jpg", "AlbumA/2.jpg", "AlbumB/3.mp4"]:
+                full = os.path.join(tmpdir, rel)
+                os.makedirs(os.path.dirname(full), exist_ok=True)
+                with open(full, "wb") as f:
+                    f.write(b"123")
+                paths.append(full)
+
+            # Choose folder 1 (AlbumA), then pick file 2 (2.jpg)
+            with patch("builtins.input", side_effect=["1", "y", "2"]):
+                chosen = uploader.interactive_select_files(tmpdir, paths)
+            self.assertEqual(
+                [os.path.relpath(p, tmpdir).replace("\\", "/") for p in chosen],
+                ["AlbumA/2.jpg"],
+            )
+
     def test_state_persistence(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = os.path.join(tmpdir, "state.json")
