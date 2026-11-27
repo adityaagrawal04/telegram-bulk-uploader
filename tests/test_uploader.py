@@ -153,6 +153,27 @@ class TestWebApp(unittest.TestCase):
             self.assertFalse(web_app.state.running)
             self.assertFalse(web_app.state.paused)
 
+            # Test logout flow
+            web_app.state.running = True
+            with self.assertRaises(web_app.HTTPException) as cm:
+                asyncio.run(web_app.logout())
+            self.assertEqual(cm.exception.status_code, 400)
+
+            web_app.state.running = False
+            # Create a dummy session file to test cleanup
+            dummy_session = f"{web_app.SESSION_NAME}.session"
+            with open(dummy_session, "w") as f:
+                f.write("dummy-session-data")
+            self.assertTrue(os.path.exists(dummy_session))
+
+            logout_res = asyncio.run(web_app.logout())
+            self.assertTrue(logout_res["logged_out"])
+            self.assertIsNone(web_app.state.client)
+            self.assertFalse(os.path.exists(dummy_session))
+
+            auth_st = asyncio.run(web_app.auth_status())
+            self.assertFalse(auth_st["authorized"])
+
     def test_state_persistence(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = os.path.join(tmpdir, "state.json")

@@ -758,6 +758,7 @@
       const b=document.getElementById("authBadge");
       const bt=document.getElementById("authBadgeText");
       if(d.api_id)document.getElementById("apiId").value=d.api_id;
+      if(d.api_hash && !document.getElementById("apiHash").value)document.getElementById("apiHash").value=d.api_hash;
       if(d.phone)document.getElementById("phone").value=d.phone;
       if(d.authorized){
         bt.textContent=`Connected: ${d.user.first_name||d.user.phone}`;
@@ -820,7 +821,38 @@
     }
 
     async function logout(){
-      try{ await api("/api/auth/logout","POST"); checkAuth(); }catch(e){ document.getElementById("authMsg").textContent=e.message; }
+      const btn = (typeof event !== "undefined" && event && event.target) ? event.target : document.querySelector("#loggedInView button");
+      if (btn) { btn.disabled = true; btn.textContent = "Logging out..."; }
+      const m = document.getElementById("authMsg");
+      if (m) m.textContent = "";
+      try{
+        await api("/api/auth/logout", "POST");
+        // Reset OTP and 2FA fields
+        document.getElementById("otpSection").classList.add("hidden");
+        document.getElementById("passwordWrap").classList.add("hidden");
+        document.getElementById("otpCode").value = "";
+        document.getElementById("twoFaPassword").value = "";
+        document.getElementById("userSummary").textContent = "";
+
+        // Reset dialogs target dropdown
+        const s = document.getElementById("targetSelect");
+        if (s) {
+          s.innerHTML = '<option value="me">Saved Messages (me) [saved]</option>';
+        }
+
+        await checkAuth();
+        if (m) {
+          m.className = "status-msg";
+          m.textContent = "Logged out successfully.";
+        }
+      }catch(e){
+        if (m) {
+          m.className = "status-msg error";
+          m.textContent = e.message;
+        }
+      }finally{
+        if (btn) { btn.disabled = false; btn.textContent = "Log Out"; }
+      }
     }
 
     async function pickFolder(){

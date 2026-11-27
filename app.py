@@ -175,10 +175,24 @@ async def choose_folder():
 @app.get("/api/auth/status")
 async def auth_status():
     api_id = os.getenv("API_ID", "")
+    api_hash = os.getenv("API_HASH", "")
     phone = os.getenv("PHONE_NUMBER", "")
+    session_file = f"{SESSION_NAME}.session"
+
+    # If no session file exists on disk and no client is active, report not authorized immediately
+    if not os.path.exists(session_file) and (state.client is None or not state.client.is_connected()):
+        return {
+            "authorized": False,
+            "has_env": bool(api_id and api_hash),
+            "api_id": api_id,
+            "api_hash": api_hash,
+            "phone": phone,
+            "user": None,
+        }
+
     client = await _get_or_create_client()
     if client is None:
-        return {"authorized": False, "has_env": False, "api_id": "", "phone": ""}
+        return {"authorized": False, "has_env": False, "api_id": "", "api_hash": "", "phone": ""}
     try:
         authorized = await client.is_user_authorized()
         user_info = None
@@ -195,11 +209,12 @@ async def auth_status():
             "authorized": authorized,
             "has_env": True,
             "api_id": api_id,
+            "api_hash": api_hash,
             "phone": phone,
             "user": user_info,
         }
     except Exception as e:
-        return {"authorized": False, "has_env": True, "error": str(e)}
+        return {"authorized": False, "has_env": True, "api_id": api_id, "api_hash": api_hash, "phone": phone, "error": str(e)}
 
 
 @app.post("/api/auth/send-code")
@@ -255,12 +270,46 @@ async def verify_code(req: VerifyCodeRequest):
 async def logout():
     if state.running:
         raise HTTPException(status_code=400, detail="Stop the active upload before logging out.")
+
+    # 1. Gracefully tell Telegram server to invalidate this session if client is active
     if state.client:
         try:
-            await state.client.log_out()
+            if not state.client.is_connected():
+                await state.client.connect()
+            if await state.client.is_user_authorized():
+                await state.client.log_out()
         except Exception:
-            await state.client.disconnect()
-        state.client = None
+            # If server log_out fails, still proceed with local cleanup
+            pass
+        finally:
+            try:
+                if state.client.session and hasattr(state.client.session, "close"):
+                    state.client.session.close()
+                await state.client.disconnect()
+            except Exception:
+                pass
+            state.client = None
+
+    # 2. Reset in-memory pending authentication
+    state.pending_phone = None
+    state.pending_phone_hash = None
+
+    # 3. Explicitly remove all session files from disk (handles Windows SQLite open handles)
+    session_files = [
+        f"{SESSION_NAME}.session",
+        f"{SESSION_NAME}.session-journal",
+    ]
+    for sf in session_files:
+        if os.path.exists(sf):
+            try:
+                os.remove(sf)
+            except Exception:
+                pass
+
+    # 4. Clear saved PHONE_NUMBER from memory so it won't force the old phone on next check
+    if "PHONE_NUMBER" in os.environ:
+        del os.environ["PHONE_NUMBER"]
+
     return {"logged_out": True}
 
 
