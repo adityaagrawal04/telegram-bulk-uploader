@@ -715,6 +715,21 @@ async def reset_upload():
     return {"reset": True}
 
 
+@app.post("/api/upload/clear-history")
+async def clear_upload_history():
+    """Clear the persistent uploaded_state.json ledger and skipped files log."""
+    if state.running:
+        raise HTTPException(status_code=400, detail="Cannot clear history while an upload is running.")
+    uploader.save_state(set())
+    skipped_file = os.path.join(BASE_DIR, uploader.SKIPPED_LOG)
+    if os.path.exists(skipped_file):
+        try:
+            os.remove(skipped_file)
+        except Exception:
+            pass
+    return {"cleared": True, "entries": 0}
+
+
 @app.get("/api/upload/status")
 async def upload_status():
     pct = 0.0

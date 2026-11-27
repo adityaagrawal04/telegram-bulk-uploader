@@ -715,6 +715,9 @@
         <button id="resetQueueBtn" class="btn-subtle" onclick="resetQueueProgress()" title="Clear queue numbers and progress bars" style="padding: 10px 14px;">
           ↺ Reset View
         </button>
+        <button id="clearHistoryBtn" class="btn-subtle" onclick="clearUploadHistory()" title="Clear upload history ledger so all files can be re-uploaded from scratch" style="padding: 10px 14px;">
+          🗑️ Clear History
+        </button>
       </div>
 
       <div class="progress-group">
@@ -974,6 +977,20 @@
         console.error("Stop error:", e);
       }
       setTimeout(poll, 400);
+    }
+
+    async function clearUploadHistory(){
+      if (!confirm("Are you sure you want to clear upload history? Previously uploaded files will no longer be skipped.")) return;
+      const btn = document.getElementById("clearHistoryBtn");
+      if (btn) btn.textContent = "⏳ Clearing...";
+      try {
+        await api("/api/upload/clear-history", "POST");
+        alert("Upload history cleared successfully. All files can now be uploaded anew.");
+      } catch (e) {
+        alert("Failed to clear upload history: " + e.message);
+      } finally {
+        if (btn) btn.textContent = "🗑️ Clear History";
+      }
     }
 
     async function resetQueueProgress(){

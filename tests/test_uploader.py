@@ -174,6 +174,17 @@ class TestWebApp(unittest.TestCase):
             auth_st = asyncio.run(web_app.auth_status())
             self.assertFalse(auth_st["authorized"])
 
+            # Test clear upload history endpoint
+            web_app.state.running = True
+            with self.assertRaises(web_app.HTTPException) as cm_hist:
+                asyncio.run(web_app.clear_upload_history())
+            self.assertEqual(cm_hist.exception.status_code, 400)
+
+            web_app.state.running = False
+            clear_res = asyncio.run(web_app.clear_upload_history())
+            self.assertTrue(clear_res["cleared"])
+            self.assertEqual(clear_res["entries"], 0)
+
     def test_state_persistence(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = os.path.join(tmpdir, "state.json")
